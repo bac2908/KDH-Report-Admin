@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -66,6 +67,21 @@ class AppTest(unittest.TestCase):
         self.assertEqual(self.client.patch('/api/settings',json={'name':'x'},headers={**self.headers,'Origin':'https://evil.invalid'}).status_code,403)
         self.post('/api/auth/logout')
         self.assertEqual(self.client.get('/api/reports').status_code,401)
+
+    def test_env_admin_bootstrap_is_idempotent_and_loginable(self):
+        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {
+            'INITIAL_ADMIN_EMAIL':'render-admin@example.test',
+            'INITIAL_ADMIN_PASSWORD':'Render-bootstrap-123',
+        }):
+            config={'DATA_DIR':folder,'TESTING':True,'APP_URL':'http://localhost'}
+            app=create_app(config)
+            create_app(config)
+            store=app.extensions['store']
+            self.assertEqual(store.one('SELECT COUNT(*) AS count FROM users')['count'],1)
+            response=app.test_client().post('/api/auth/login',json={
+                'email':'render-admin@example.test','password':'Render-bootstrap-123',
+            },headers={'X-KDH-Request':'1'})
+            self.assertEqual(response.status_code,200,response.json)
 
     def test_viewer_acl_and_session_revocation(self):
         job,data=self.analyze()

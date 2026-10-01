@@ -58,6 +58,8 @@ def load_config():
         'DATA_DIR': str(ROOT / 'instance'),
         'APP_URL': os.getenv('APP_URL', 'http://127.0.0.1:8090').rstrip('/'),
         'COOKIE_SECURE': os.getenv('COOKIE_SECURE', '0') == '1',
+        'INITIAL_ADMIN_EMAIL': os.getenv('INITIAL_ADMIN_EMAIL', '').strip(),
+        'INITIAL_ADMIN_PASSWORD': os.getenv('INITIAL_ADMIN_PASSWORD', ''),
         'GOOGLE_CLIENT_ID': os.getenv('GOOGLE_CLIENT_ID', ''),
         'GOOGLE_CLIENT_SECRET': os.getenv('GOOGLE_CLIENT_SECRET', ''),
         'GOOGLE_REDIRECT_URI': os.getenv('GOOGLE_REDIRECT_URI', 'http://127.0.0.1:8090/api/google/callback'),

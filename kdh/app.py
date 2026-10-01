@@ -17,11 +17,36 @@ from .jobs import Worker, enqueue, job_view, next_run, period_dates
 from .reports import import_legacy, publish, save_report, save_upload, valid_dataset
 
 
+def _bootstrap_initial_admin(store, email, password):
+    if store.one('SELECT id FROM users LIMIT 1'):
+        return
+    if not email and not password:
+        return
+    if not email or not password:
+        raise RuntimeError('Set INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD together.')
+
+    email = email.strip().lower()
+    if len(email) > 254 or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email):
+        raise RuntimeError('INITIAL_ADMIN_EMAIL must be a valid email address.')
+    if not 12 <= len(password) <= 200:
+        raise RuntimeError('INITIAL_ADMIN_PASSWORD must be between 12 and 200 characters.')
+
+    password_hash = generate_password_hash(password)
+    with store.connect(immediate=True) as db:
+        if db.execute('SELECT id FROM users LIMIT 1').fetchone():
+            return
+        actor = uid()
+        db.execute('INSERT INTO users VALUES (?,?,?,?,?,?,?,?)',
+                   (actor, email, 'Quản trị viên', password_hash, 'admin', pack(list(TYPES)), 1, now()))
+    store.event(actor, 'setup')
+
+
 def create_app(overrides=None):
     app = Flask(__name__, static_folder=str(ROOT / 'static'), template_folder=str(ROOT / 'templates'))
     app.config.update(load_config())
     app.config.update(overrides or {})
     store = Store(app.config['DATA_DIR'])
+    _bootstrap_initial_admin(store, app.config['INITIAL_ADMIN_EMAIL'], app.config['INITIAL_ADMIN_PASSWORD'])
     google = Google(store, app.config)
     worker = Worker(store, google)
     app.extensions.update(store=store, google=google, worker=worker)

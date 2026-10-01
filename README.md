@@ -152,6 +152,10 @@ Xuất bản hiện là **xuất bản nội bộ trong admin**, không public v
 - Khi triển khai ngoài localhost, đặt HTTPS reverse proxy, `APP_URL` đúng origin, `COOKIE_SECURE=1`, redirect URI HTTPS đúng trong Google Cloud. Cấp quyền đọc/ghi thư mục dữ liệu cho tài khoản dịch vụ, không cho người dùng không liên quan.
 - Chỉ expose cổng admin sau lớp mạng nội bộ theo nhu cầu đơn vị. Các API dữ liệu đều yêu cầu đăng nhập.
 
+### Demo Render Free
+
+Để tạo admin đầu tiên khi không có Shell, đặt `INITIAL_ADMIN_EMAIL` và `INITIAL_ADMIN_PASSWORD` trong Environment của Render. Khi database chưa có user, ứng dụng tạo admin với toàn quyền; mật khẩu phải dài 12–200 ký tự. Nếu database đã có user, các biến này không thay đổi tài khoản hiện có. Không commit các giá trị này vào Git. Render Free không có persistent disk, vì vậy database, tài khoản và báo cáo có thể mất khi service được triển khai lại hoặc khởi động lại; chỉ dùng cho demo tạm thời.
+
 Docker là tùy chọn; chưa cần cho bản local:
 
 ```powershell
