@@ -175,7 +175,7 @@ def insert_report(store, actor, report_type, html, dataset_id, start, end, valid
         existing = db.execute('SELECT id FROM reports WHERE report_type=? AND content_hash=?', (report_type, checksum)).fetchone()
         if existing:
             return existing['id']
-        version = db.execute('SELECT COALESCE(MAX(version),0)+1 FROM reports WHERE report_type=?', (report_type,)).fetchone()[0]
+        version = db.execute('SELECT COALESCE(MAX(version),0)+1 AS version FROM reports WHERE report_type=?', (report_type,)).fetchone()['version']
         db.execute('INSERT INTO reports VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                    (report_id, report_type, TYPES[report_type][0], version, dataset_id, actor, created_at, start, end, int(valid), origin, checksum, html))
     return report_id
@@ -205,7 +205,7 @@ def publish(store, actor, report_id):
         raise Problem('Báo cáo demo dùng để xem trước và tải xuống; không thay thế bản xuất bản chính thức.', 409)
     if not row['valid']:
         raise Problem('Bản lưu cũ chưa được kiểm chứng dữ liệu. Hãy tạo bản mới từ nguồn hợp lệ trước khi xuất bản.', 409)
-    store.execute('INSERT OR REPLACE INTO publications VALUES (?,?,?)', (row['report_type'], row['id'], now()))
+    store.execute('INSERT INTO publications VALUES (?,?,?) ON CONFLICT(report_type) DO UPDATE SET report_id=excluded.report_id,published_at=excluded.published_at', (row['report_type'], row['id'], now()))
     store.event(actor, 'publish', {'report_id': report_id, 'report_type': row['report_type']})
 
 

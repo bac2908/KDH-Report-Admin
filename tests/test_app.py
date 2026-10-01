@@ -31,6 +31,8 @@ class AppTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         # Tests own their OAuth configuration even after real credentials are added to .env.
         self.app = create_app({'DATA_DIR':self.temp.name, 'TESTING':True, 'APP_URL':'http://localhost',
+                               'DATABASE_URL':'', 'VERCEL':False, 'JOB_MODE':'worker', 'ENCRYPTION_KEY':'',
+                               'INITIAL_ADMIN_EMAIL':'', 'INITIAL_ADMIN_PASSWORD':'',
                                'GOOGLE_CLIENT_ID':'', 'GOOGLE_CLIENT_SECRET':'', 'COOKIE_SECURE':False,
                                'GOOGLE_REDIRECT_URI':'http://localhost/api/google/callback',
                                'LEGACY_REPORT_DIR':str(Path(self.temp.name)/'legacy')})
@@ -73,7 +75,8 @@ class AppTest(unittest.TestCase):
             'INITIAL_ADMIN_EMAIL':'render-admin@example.test',
             'INITIAL_ADMIN_PASSWORD':'Render-bootstrap-123',
         }):
-            config={'DATA_DIR':folder,'TESTING':True,'APP_URL':'http://localhost'}
+            config={'DATA_DIR':folder,'TESTING':True,'APP_URL':'http://localhost',
+                    'DATABASE_URL':'', 'VERCEL':False, 'JOB_MODE':'worker', 'ENCRYPTION_KEY':''}
             app=create_app(config)
             create_app(config)
             store=app.extensions['store']

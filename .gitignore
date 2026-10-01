@@ -1,5 +1,10 @@
 .venv/
 .env
+.env.*
+!.env.example
+!.env.vercel.example
+public/
+.vercel/
 instance/
 __pycache__/
 *.pyc

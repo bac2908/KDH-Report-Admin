@@ -1,6 +1,9 @@
 .venv
 .git
 .env
+.env.*
+.vercel
+public
 instance
 node_modules
 .npm-cache

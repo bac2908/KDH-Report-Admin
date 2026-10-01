@@ -14,6 +14,8 @@ class DemoTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.app = create_app({'DATA_DIR': self.temp.name, 'TESTING': True, 'APP_URL': 'http://localhost',
+                               'DATABASE_URL':'', 'VERCEL':False, 'JOB_MODE':'worker', 'ENCRYPTION_KEY':'',
+                               'INITIAL_ADMIN_EMAIL':'', 'INITIAL_ADMIN_PASSWORD':'',
                                'GOOGLE_CLIENT_ID': '', 'GOOGLE_CLIENT_SECRET': '', 'COOKIE_SECURE': False})
         self.store = self.app.extensions['store']
         self.client = self.app.test_client()

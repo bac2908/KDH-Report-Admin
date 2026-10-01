@@ -137,16 +137,13 @@ def seed_demo(store, actor):
             source['fetched_at'] = created
         datasets.append({'id': uid(), 'params': p, 'created_at': created, 'sources': sources, 'organization': org})
     export_id = uid()
-    output = store.folder / 'exports'
-    output.mkdir(exist_ok=True)
-    (output / (export_id + '.xlsx')).write_bytes(excel_bytes(datasets[0]))
+    export_content = excel_bytes(datasets[0])
     summary = {'version': 1, 'created_at': stamp, 'dataset_id': datasets[0]['id'], 'datasets': 6,
                'reports': 6, 'uploads': 2, 'jobs': 9, 'export_job_id': export_id, 'start': start, 'end': end}
     with store.connect(immediate=True) as db:
         # Recheck under the write lock if two seed commands raced.
         existing = db.execute("SELECT value FROM settings WHERE key='demo_pack'").fetchone()
         if existing:
-            (output / (export_id + '.xlsx')).unlink(missing_ok=True)
             return json.loads(existing['value'])
         db.executemany('INSERT INTO uploads VALUES (?,?,?,?,?,?,?,?)', uploads)
         for row in uploads:
@@ -162,7 +159,7 @@ def seed_demo(store, actor):
             p, at = d['params'], d['created_at']
             db.execute('INSERT INTO datasets VALUES (?,?,?,?,?,?)', (d['id'], actor, p['report_type'], at, 1, pack(d)))
             html = render_report(d, org)
-            version = db.execute('SELECT COALESCE(MAX(version),0)+1 FROM reports WHERE report_type=?', (p['report_type'],)).fetchone()[0]
+            version = db.execute('SELECT COALESCE(MAX(version),0)+1 AS version FROM reports WHERE report_type=?', (p['report_type'],)).fetchone()['version']
             db.execute('INSERT INTO reports VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
                        (uid(), p['report_type'], 'DEMO · ' + TYPES[p['report_type']][0], version, d['id'], actor, at,
                         p['start'], p['end'], 1, 'demo', digest(html), html))
@@ -173,6 +170,7 @@ def seed_demo(store, actor):
         history('analysis', base, 'interrupted', (datetime.now(timezone.utc)-timedelta(minutes=6)).isoformat(),
                 error='DEMO · Minh họa tác vụ bị gián đoạn khi máy chủ khởi động lại.')
         history('export', {**base, 'dataset_id': datasets[0]['id']}, 'succeeded', stamp, datasets[0]['id'], job_id=export_id)
+        db.execute('INSERT INTO artifacts VALUES (?,?)', (export_id, export_content))
         db.execute('INSERT INTO settings VALUES (?,?)', ('demo_pack', pack(summary)))
         db.execute('INSERT INTO events VALUES (?,?,?,?,?)', (uid(), actor, 'seed_demo', stamp, pack(summary)))
     return summary

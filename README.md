@@ -1,6 +1,10 @@
 # KDH Report Admin
 
-Ứng dụng quản trị báo cáo nội bộ KinderHealth, xây từ thiết kế Stitch trong `stitch_kdh_report_admin_frontend/`. Flask phục vụ cả API và frontend tiếng Việt; SQLite lưu dữ liệu bền vững; worker xử lý tác vụ nền. Không cần chạy một Node backend hay MongoDB riêng.
+Ứng dụng quản trị báo cáo nội bộ KinderHealth, xây từ thiết kế Stitch trong `stitch_kdh_report_admin_frontend/`. Flask phục vụ cả API và frontend tiếng Việt. Docker/local dùng SQLite và worker; Vercel dùng PostgreSQL và tác vụ xử lý trong HTTP request. Không cần chạy một Node backend hay MongoDB riêng.
+
+## Chạy trên Vercel
+
+Làm theo [hướng dẫn Vercel + Neon](DEPLOY_VERCEL.md): tạo database, thêm các biến trong [.env.vercel.example](.env.vercel.example), cập nhật Google OAuth redirect URI rồi deploy code mới. Tài khoản, kết nối Google, kết quả, HTML và Excel được lưu trong PostgreSQL; `/tmp` không dùng làm nơi lưu dữ liệu lâu dài. Admin có thể thêm bộ demo ngay trong **Cài đặt**.
 
 ## Demo bằng Docker trên máy này
 
@@ -84,7 +88,7 @@ Tài sản mặc định đã được đưa vào cấu hình:
 
 Tài khoản Google cần được chia sẻ quyền riêng trên cả ba tài sản. Trạng thái thiếu quyền / lỗi API / không có dữ liệu được ghi riêng. Kết nối có thể cần cấp lại khi hết hạn hoặc bị thu hồi.
 
-Backend giữ access token và refresh token mã hóa bằng Fernet trong SQLite. Khóa ở `instance/encryption.key`. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
+Backend giữ access token và refresh token mã hóa bằng Fernet trong database. Docker/local dùng khóa ở `instance/encryption.key`; PostgreSQL/Vercel dùng biến `ENCRYPTION_KEY` cố định. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
 
 Tài liệu API đã đối chiếu: [Google OAuth Web Server](https://developers.google.com/identity/protocols/oauth2/web-server), [GA4 runReport](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runReport), [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), [Sheets values.get](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get).
 
@@ -98,7 +102,7 @@ Tài liệu API đã đối chiếu: [Google OAuth Web Server](https://developer
 | Báo cáo đã lưu | Tạo HTML từ kết quả hợp lệ, nhập HTML cũ, xem trước trong sandbox, mở, tải, phiên bản, xuất bản nội bộ và chọn lại bản trước |
 | Kết nối Google | OAuth do backend xử lý, kiểm tra riêng từng nguồn, kết nối lại / ngắt kết nối; chỉ admin |
 | Lịch sử | Người chạy, tham số, thời gian, trạng thái từng bước, chạy lại lỗi, ngăn tạo trùng tác vụ đang chạy |
-| Dữ liệu đầu vào | CSV UTF-8 đến 5 MB, preview, kiểm tra cột / số liệu / mã cơ sở, file trùng và kỳ chồng lấn |
+| Dữ liệu đầu vào | CSV UTF-8 đến 5 MB local (request 4 MB trên Vercel), preview, kiểm tra cột / số liệu / mã cơ sở, file trùng và kỳ chồng lấn |
 | Lịch tự động | Ngày/tuần/tháng, giờ Việt Nam, 7/28 ngày đến hôm qua hoặc tháng trước, tạo bản nháp hoặc xuất bản nội bộ khi hợp lệ, bật/tắt |
 | Người dùng | Ba vai trò, cấp quyền theo loại báo cáo, vô hiệu hóa, đổi mật khẩu và thu hồi phiên cũ |
 | Cài đặt | Tên đơn vị và người lập, hiển thị chính sách múi giờ / phiên bản / xuất bản |
@@ -142,12 +146,12 @@ Facebook Ads, Facebook Content 7/30 ngày/6 tháng và TikTok hiện có **thư 
 
 Xuất bản hiện là **xuất bản nội bộ trong admin**, không public và không đẩy GCS. GCS, chỉnh KPI mục tiêu, upload logo, tự xóa phiên bản và bộ tạo mới Facebook/TikTok nằm ngoài bản chạy đầu này. Không có nút giả báo thao tác đã thành công.
 
-## Vận hành
+## Vận hành Docker/local
 
 - Một process Waitress và một worker nền. File lock ngăn chạy hai server cùng thư mục dữ liệu. Đây là cấu hình cho một đơn vị, không phải hàng đợi phân tán.
 - Tác vụ chờ được lưu SQLite. Tác vụ đang chạy khi server dừng sẽ chuyển `interrupted` ở lần mở lại, có thể thử lại.
 - Lịch dùng timezone IANA Việt Nam. Khi mở lại sau thời gian tắt, xử lý một lần bị lỡ rồi tính lần tới; không chạy bù toàn bộ lịch sử.
-- SQLite ở `instance/kdh.sqlite3`, khóa mã hóa ở `instance/encryption.key`, Excel ở `instance/exports/`. Dừng server trước khi sao lưu toàn bộ `instance` (hoặc dùng SQLite backup API cho backup khi đang chạy). Giữ khóa mã hóa cùng bản sao lưu trong kho nội bộ hạn chế quyền đọc.
+- Với Docker/local: SQLite ở `instance/kdh.sqlite3`, khóa mã hóa ở `instance/encryption.key`. Excel mới lưu trong database; Excel của bản cũ vẫn đọc từ `instance/exports/`. Dừng server trước khi sao lưu toàn bộ `instance` (hoặc dùng SQLite backup API cho backup khi đang chạy). Giữ khóa mã hóa cùng bản sao lưu trong kho nội bộ hạn chế quyền đọc.
 - Không đưa `instance`, `.env`, credential vào Git, thư mục web hoặc bản chia sẻ frontend. Các thư mục này đã được loại trong `.gitignore` / `.dockerignore`.
 - Khi triển khai ngoài localhost, đặt HTTPS reverse proxy, `APP_URL` đúng origin, `COOKIE_SECURE=1`, redirect URI HTTPS đúng trong Google Cloud. Cấp quyền đọc/ghi thư mục dữ liệu cho tài khoản dịch vụ, không cho người dùng không liên quan.
 - Chỉ expose cổng admin sau lớp mạng nội bộ theo nhu cầu đơn vị. Các API dữ liệu đều yêu cầu đăng nhập.
@@ -174,7 +178,7 @@ npm.cmd test
 .\.venv\Scripts\python.exe tests/run_http_smoke.py
 ```
 
-Hiện có 23 test Python trong `tests/test_app.py` và `tests/test_demo.py`, cùng 7 test giao diện trong `tests/ui.test.js`. Python dùng `unittest`, Flask test client và SQLite tạm; giao diện dùng Node test runner và JSDOM với HTTP API giả lập. Các test dùng cấu hình OAuth riêng, không phụ thuộc Client ID/Secret thật trong `.env`.
+Hiện có 36 test Python (gồm 5 bài PostgreSQL cần `TEST_DATABASE_URL` riêng, tự bỏ qua khi chưa cấu hình), cùng 8 test giao diện trong `tests/ui.test.js`. Python dùng `unittest`, Flask test client, SQLite tạm và schema PostgreSQL riêng cho từng bài; giao diện dùng Node test runner và JSDOM với HTTP API giả lập. Các test dùng cấu hình OAuth riêng, không phụ thuộc Client ID/Secret thật trong `.env`. Xem [hướng dẫn kiểm thử PostgreSQL](DEPLOY_VERCEL.md#kiểm-thử-trước-khi-triển-khai).
 
 Test Python kiểm tra auth/CSRF/phân quyền, queue, dữ liệu thiếu/độ trễ, Excel theo snapshot, công thức độc hại, CSV, phiên bản/xuất bản, OAuth state, lịch chạy và chế độ demo. Test DOM kiểm tra đăng nhập, bộ lọc chưa áp dụng, export, điều hướng, chuyển demo/thật và xóa dữ liệu phiên cũ khi hết hạn. Dữ liệu giả trong kiểm thử và bộ demo được chọn riêng; lỗi nguồn thật không tự dùng dữ liệu mẫu.
 

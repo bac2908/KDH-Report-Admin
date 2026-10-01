@@ -1,11 +1,12 @@
 import json
 import sqlite3
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from .core import TYPES, TZ, GOOD, allowed, filters, Problem, digest, now, pack, uid
-from .google import source_result
+from .google import source_result, REQUEST_DEADLINE
 from .reports import gmb_data, valid_dataset, save_report, publish, excel_bytes
 
 
@@ -56,15 +57,18 @@ def period_dates(period, at=None):
 
 
 class Worker:
-    """One server process owns this durable SQLite queue; no request runs report scripts."""
+    """Durable queue, claimed atomically by the local worker or a serverless request."""
     def __init__(self, store, google):
         self.store, self.google = store, google
         self.stopping = threading.Event()
         self.thread = None
 
     def start(self):
-        self.store.execute("UPDATE jobs SET status='interrupted', finished_at=?, error=? WHERE status='running'",
-                           (now(), 'Ứng dụng đã khởi động lại trong lúc chạy. Bạn có thể thử lại tác vụ.'))
+        if self.google.config.get('JOB_MODE') == 'request':
+            return
+        if not self.store.postgres:
+            self.store.execute("UPDATE jobs SET status='interrupted', finished_at=?, error=? WHERE status='running'",
+                               (now(), 'Ứng dụng đã khởi động lại trong lúc chạy. Bạn có thể thử lại tác vụ.'))
         self.thread = threading.Thread(target=self.loop, name='kdh-worker', daemon=True)
         self.thread.start()
 
@@ -99,18 +103,38 @@ class Worker:
                 db.execute('UPDATE schedules SET last_run=?,last_job=?,next_run=? WHERE id=?',
                            (now(), job_id, next_run(schedule), schedule['id']))
 
-    def run_one(self):
+    def expire_stale(self):
+        if self.google.config.get('JOB_MODE') != 'request':
+            return
+        # Greater than the configured 300s Vercel function lifetime. A cold start
+        # must never interrupt another instance's active request.
+        cutoff = (datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat(timespec='microseconds')
+        self.store.execute("UPDATE jobs SET status='interrupted',finished_at=?,error=? WHERE status='running' AND started_at<?",
+                           (now(), 'Lần chạy bị gián đoạn hoặc quá thời gian máy chủ. Bấm Thử lại để chạy lại.', cutoff))
+
+    def run_one(self, job_id=None, deadline=None):
+        self.expire_stale()
         with self.store.connect(immediate=True) as db:
-            job = db.execute("SELECT * FROM jobs WHERE status='queued' ORDER BY created_at,id LIMIT 1").fetchone()
+            query = "SELECT * FROM jobs WHERE status='queued'"
+            job = db.execute(query + (' AND id=?' if job_id else '') + ' ORDER BY created_at,id LIMIT 1',
+                             (job_id,) if job_id else ()).fetchone()
             if not job:
                 return False
             job = dict(job)
             db.execute("UPDATE jobs SET status='running',started_at=? WHERE id=?", (now(), job['id']))
+        if deadline is None and self.google.config.get('JOB_MODE') == 'request':
+            deadline = time.monotonic() + 220
+        token = REQUEST_DEADLINE.set(deadline)
         try:
             self.perform(job)
+        except Problem as exc:
+            self.store.execute("UPDATE jobs SET status='failed',finished_at=?,error=? WHERE id=?",
+                               (now(), exc.message, job['id']))
         except Exception:
             self.store.execute("UPDATE jobs SET status='failed',finished_at=?,error=? WHERE id=?",
                                (now(), 'Tác vụ không hoàn tất. Kết quả cũ vẫn được giữ. Kiểm tra nguồn và thử lại.', job['id']))
+        finally:
+            REQUEST_DEADLINE.reset(token)
         return True
 
     def perform(self, job):
@@ -126,12 +150,8 @@ class Worker:
             row = self.store.one('SELECT data FROM datasets WHERE id=?', (p['dataset_id'],))
             if not row:
                 raise Problem('Không tìm thấy kết quả báo cáo.')
-            output = self.store.folder / 'exports'
-            output.mkdir(exist_ok=True)
             content = excel_bytes(json.loads(row['data']))
-            temp = output / (job['id'] + '.tmp')
-            temp.write_bytes(content)
-            temp.replace(output / (job['id'] + '.xlsx'))
+            self.store.save_artifact(job['id'], content)
             self.store.execute("UPDATE jobs SET status='succeeded',finished_at=?,dataset_id=? WHERE id=?", (now(), p['dataset_id'], job['id']))
             return
         sources, steps = {}, []

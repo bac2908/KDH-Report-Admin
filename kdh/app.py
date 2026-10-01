@@ -3,6 +3,7 @@ import json
 import re
 import secrets
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from urllib.parse import urlsplit
@@ -45,7 +46,16 @@ def create_app(overrides=None):
     app = Flask(__name__, static_folder=str(ROOT / 'static'), template_folder=str(ROOT / 'templates'))
     app.config.update(load_config())
     app.config.update(overrides or {})
-    store = Store(app.config['DATA_DIR'])
+    if app.config['JOB_MODE'] not in ('request', 'worker'):
+        raise RuntimeError('JOB_MODE must be request or worker.')
+    if app.config['VERCEL']:
+        if not app.config['DATABASE_URL'] or not app.config['ENCRYPTION_KEY']:
+            raise RuntimeError('Vercel requires DATABASE_URL and a stable ENCRYPTION_KEY. See DEPLOY_VERCEL.md.')
+        if app.config['JOB_MODE'] != 'request' or not app.config['APP_URL'].startswith('https://'):
+            raise RuntimeError('Vercel requires JOB_MODE=request and an HTTPS APP_URL.')
+        if not app.config['COOKIE_SECURE']:
+            raise RuntimeError('Vercel requires COOKIE_SECURE=1.')
+    store = Store(app.config['DATA_DIR'], app.config['DATABASE_URL'])
     _bootstrap_initial_admin(store, app.config['INITIAL_ADMIN_EMAIL'], app.config['INITIAL_ADMIN_PASSWORD'])
     google = Google(store, app.config)
     worker = Worker(store, google)
@@ -120,6 +130,10 @@ def create_app(overrides=None):
 
     @app.after_request
     def response_headers(response):
+        if app.config['VERCEL'] and response.content_length and response.content_length > 4 * 1024 * 1024:
+            response.close()
+            response = jsonify(error='Dữ liệu phản hồi vượt 4 MB. Chọn từng nguồn hoặc khoảng ngày ngắn hơn rồi thử lại.')
+            response.status_code = 413
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
@@ -139,7 +153,8 @@ def create_app(overrides=None):
 
     @app.errorhandler(HTTPException)
     def http_problem(exc):
-        labels = {404: 'Không tìm thấy đường dẫn.', 413: 'File quá lớn. Giới hạn upload là 5 MB.', 405: 'Phương thức không được hỗ trợ.'}
+        limit = app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024)
+        labels = {404: 'Không tìm thấy đường dẫn.', 413: f'File quá lớn. Giới hạn upload là {limit} MB.', 405: 'Phương thức không được hỗ trợ.'}
         return jsonify(error=labels.get(exc.code, 'Yêu cầu không hợp lệ.')), exc.code
 
     @app.errorhandler(Exception)
@@ -158,6 +173,22 @@ def create_app(overrides=None):
     def health():
         store.one('SELECT 1')
         return jsonify(status='ok')
+
+    @app.get('/api/cron')
+    def cron():
+        secret = app.config['CRON_SECRET']
+        if not secret or not secrets.compare_digest(request.headers.get('Authorization', ''), 'Bearer ' + secret):
+            raise Problem('Không có quyền chạy lịch.', 401)
+        if app.config['JOB_MODE'] != 'request':
+            raise Problem('Lịch đang được xử lý bởi worker.', 409)
+        worker.expire_stale()
+        worker.tick_schedules()
+        deadline, processed = time.monotonic() + 220, 0
+        # Leave enough budget for a full job. Remaining jobs stay durably queued.
+        while deadline - time.monotonic() > 90 and worker.run_one(deadline=deadline):
+            processed += 1
+        return jsonify(processed=processed,
+                       queued=store.one("SELECT COUNT(*) AS n FROM jobs WHERE status='queued'")['n'])
 
     @app.get('/api/auth/me')
     def me():
@@ -206,7 +237,7 @@ def create_app(overrides=None):
         verified = check_password_hash(user['password'] if user else dummy_hash, password)
         if not user or not user['active'] or not verified:
             count = attempt['count'] + 1 if attempt and attempt['until_at'] > now() else 1
-            store.execute('INSERT OR REPLACE INTO attempts VALUES (?,?,?)',
+            store.execute('INSERT INTO attempts VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET count=excluded.count,until_at=excluded.until_at',
                           (key, count, (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat()))
             raise Problem('Email hoặc mật khẩu không đúng.', 401)
         store.execute('DELETE FROM attempts WHERE key=?', (key,))
@@ -230,6 +261,7 @@ def create_app(overrides=None):
     @app.get('/api/overview')
     @require()
     def overview():
+        worker.expire_stale()
         visible = [k for k in TYPES if allowed(g.user, k)]
         reports = store.all('SELECT id,report_type,name,version,created_at,valid,origin FROM reports ORDER BY created_at DESC')
         reports = [r for r in reports if r['report_type'] in visible]
@@ -254,6 +286,7 @@ def create_app(overrides=None):
                     target[k]['last_success_data_date'] = value['latest_available_date']
         info = google.info()
         return jsonify(reports=reports[:6], report_count=len(reports), jobs=jobs[:6],
+                       job_mode=app.config['JOB_MODE'], upload_limit_mb=app.config['MAX_CONTENT_LENGTH'] // (1024 * 1024),
                        demo_enabled=bool(store.setting('demo_pack')), demo_sources=demo_sources, demo_datasets=demo_datasets,
                        running=sum(j['status'] in ('queued','running') for j in jobs),
                        failed=sum(j['status'] in ('failed','partial','interrupted') for j in jobs),
@@ -280,11 +313,11 @@ def create_app(overrides=None):
         try:
             google.exchange(request.args.get('state',''), request.args.get('code',''), g.session_id)
             start, end = period_dates('last7')
-            enqueue(store, g.user['id'], 'connection', filters({'start':start, 'end':end, 'report_type':'seo'}))
+            job_id, _ = enqueue(store, g.user['id'], 'connection', filters({'start':start, 'end':end, 'report_type':'seo'}))
             store.event(g.user['id'], 'google_connect')
         except (Problem, SourceError):
             return redirect('/#connections?oauth=failed')
-        return redirect('/#connections?oauth=success')
+        return redirect('/#connections/google?oauth=success&job=' + job_id)
 
     @app.post('/api/google/check')
     @require('admin')
@@ -337,13 +370,32 @@ def create_app(overrides=None):
     @app.get('/api/jobs')
     @require()
     def jobs():
+        worker.expire_stale()
         rows = store.all('SELECT j.*,u.name AS actor FROM jobs j LEFT JOIN users u ON u.id=j.user_id ORDER BY j.created_at DESC LIMIT 300')
         return jsonify([job_view(r) for r in rows if allowed(g.user, json.loads(r['params'])['report_type']) and (r['kind']!='connection' or g.user['role']=='admin')])
 
     @app.get('/api/jobs/<job_id>')
     @require()
     def job(job_id):
+        worker.expire_stale()
         return jsonify(get_job(job_id))
+
+    @app.post('/api/jobs/<job_id>/process')
+    @require()
+    def process_job(job_id):
+        current = get_job(job_id)
+        # A viewer cannot trigger another user's scheduled publication.
+        if current['user_id'] != g.user['id'] and g.user['role'] != 'admin':
+            raise Problem('Chỉ người tạo hoặc Admin được khởi chạy tác vụ này.', 403)
+        if app.config['JOB_MODE'] == 'request':
+            worker.run_one(job_id)
+        return jsonify(get_job(job_id))
+
+    @app.post('/api/demo/seed')
+    @require('admin')
+    def install_demo():
+        from .demo import seed_demo
+        return jsonify(seed_demo(store, g.user['id']))
 
     @app.post('/api/jobs/<job_id>/retry')
     @require()
@@ -365,12 +417,15 @@ def create_app(overrides=None):
     @require()
     def download_export(job_id):
         job = get_job(job_id)
-        path = store.folder / 'exports' / (job['id']+'.xlsx')
-        if job['kind'] != 'export' or job['status'] != 'succeeded' or not path.is_file():
+        if job['kind'] != 'export' or job['status'] != 'succeeded':
             raise Problem('File Excel chưa sẵn sàng.', 409)
+        content = store.artifact(job['id'])
+        if content is None:
+            raise Problem('File Excel cũ không còn trên máy chủ. Hãy xuất lại từ báo cáo đã lưu.', 409)
         p = job['params']
         prefix = 'DEMO_' if p.get('demo') else ''
-        return send_file(path, as_attachment=True, download_name=f"{prefix}KinderHealth_Report_{p['start']}_{p['end']}.xlsx")
+        return send_file(io.BytesIO(content), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                         as_attachment=True, download_name=f"{prefix}KinderHealth_Report_{p['start']}_{p['end']}.xlsx")
 
     @app.get('/api/reports')
     @require()
@@ -465,7 +520,8 @@ def create_app(overrides=None):
     def settings():
         return jsonify(organization=store.setting('organization',{'name':'KinderHealth','author':''}),
                        timezone=TZ, publish_mode='internal', versions='Giữ toàn bộ phiên bản',
-                       oauth_configured=google.configured(), dashboard_url=app.config['DASHBOARD_URL'])
+                       oauth_configured=google.configured(), dashboard_url=app.config['DASHBOARD_URL'],
+                       demo_enabled=bool(store.setting('demo_pack')), job_mode=app.config['JOB_MODE'])
 
     @app.patch('/api/settings')
     @require('admin')

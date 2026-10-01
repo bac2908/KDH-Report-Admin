@@ -6,6 +6,8 @@ import math
 import re
 import secrets
 import threading
+import time
+from contextvars import ContextVar
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote, urlencode
 
@@ -17,6 +19,7 @@ from .core import Problem, now, pack, digest
 SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/analytics.readonly',
           'https://www.googleapis.com/auth/webmasters.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly']
 LABELS = {'ga4': 'Google Analytics 4', 'gsc': 'Search Console', 'keywords': 'Keyword Tracking', 'gmb': 'Google Business Profile'}
+REQUEST_DEADLINE = ContextVar('google_request_deadline', default=None)
 
 
 class SourceError(Exception):
@@ -26,6 +29,10 @@ class SourceError(Exception):
 
 
 def call(method, url, **kwargs):
+    deadline = REQUEST_DEADLINE.get()
+    # Reserve a full network timeout and time to persist results before Vercel stops us.
+    if deadline is not None and deadline - time.monotonic() < 60:
+        raise SourceError('timeout', 'Đã hết thời gian xử lý của lần chạy này. Chọn từng nguồn hoặc khoảng ngày ngắn hơn rồi thử lại.')
     try:
         response = requests.request(method, url, timeout=(10, 45), **kwargs)
     except requests.Timeout:
@@ -50,6 +57,12 @@ class Google:
     def __init__(self, store, config):
         self.store, self.config = store, config
         self.lock = threading.RLock()
+        key = config.get('ENCRYPTION_KEY')
+        if key:
+            self.cipher = Fernet(key.encode())
+            return
+        if store.postgres:
+            raise RuntimeError('ENCRYPTION_KEY is required with DATABASE_URL; keep the same key across deployments.')
         keyfile = store.folder / 'encryption.key'
         try:
             with keyfile.open('xb') as f:
@@ -66,7 +79,7 @@ class Google:
         return json.loads(self.cipher.decrypt(record['value'])) if record else None
 
     def save(self, data):
-        self.store.execute('INSERT OR REPLACE INTO secrets VALUES (?,?)', ('google', self.cipher.encrypt(pack(data).encode())))
+        self.store.execute('INSERT INTO secrets VALUES (?,?) ON CONFLICT(name) DO UPDATE SET value=excluded.value', ('google', self.cipher.encrypt(pack(data).encode())))
 
     def info(self):
         token = self.read()
@@ -111,7 +124,8 @@ class Google:
 
     def access_token(self):
         with self.lock:
-            token = self.read()
+            record = self.store.one('SELECT value FROM secrets WHERE name=?', ('google',))
+            token = json.loads(self.cipher.decrypt(record['value'])) if record else None
             if not token:
                 raise SourceError('disconnected', 'Chưa kết nối Google. Liên hệ Admin để kết nối nguồn.')
             if datetime.fromisoformat(token['expires_at']) < datetime.now(timezone.utc) + timedelta(minutes=2):
@@ -125,7 +139,15 @@ class Google:
                     raise
                 token.update(refreshed)
                 token['expires_at'] = (datetime.now(timezone.utc) + timedelta(seconds=refreshed.get('expires_in', 3600))).isoformat()
-                self.save(token)
+                # Another function may have refreshed or replaced this connection
+                # while the provider request was in flight. Never overwrite it.
+                saved = self.store.execute('UPDATE secrets SET value=? WHERE name=? AND value=?',
+                                           (self.cipher.encrypt(pack(token).encode()), 'google', record['value']))
+                if not saved:
+                    current = self.read()
+                    if not current:
+                        raise SourceError('disconnected', 'Kết nối Google đã được ngắt. Admin cần kết nối lại.')
+                    return current['access_token']
             return token['access_token']
 
     def disconnect(self):
