@@ -130,8 +130,14 @@ test('All operator pages render; unconfigured OAuth is explicit and viewer has n
     for (const page of ['reports', 'connections', 'activity', 'uploads', 'schedules', 'users', 'settings']) {
       h.w.location.hash = page; await h.until(() => h.document.querySelector(`[href="#${page}"]`)?.classList.contains('active') && h.document.querySelector('#content h1'));
       assert.doesNotMatch(h.document.querySelector('#content').textContent, /Không thể hiển thị màn hình/);
-      if (page === 'connections') { assert.equal(h.document.querySelector('[data-action=connect-google]').disabled, true); assert.match(h.document.body.textContent, /Chưa cấu hình Google OAuth/); assert.match(h.document.querySelector('.nav-link[href="#connections"]').textContent, /Kết nối nền tảng/); assert.match(h.document.querySelector('#content').textContent, /Meta Marketing API/); assert.match(h.document.querySelector('#content').textContent, /TikTok Business API/); assert.equal(h.document.querySelectorAll('.provider-section .badge.neutral').length, 2); assert.ok(h.document.querySelector('a[href="https://developers.facebook.com/docs/marketing-apis/"]')); assert.ok(h.document.querySelector('a[href="https://business-api.tiktok.com/portal/docs"]')); }
+      if (page === 'connections') { assert.match(h.document.querySelector('.nav-link[href="#connections"]').textContent, /Kết nối nền tảng/); assert.equal(h.document.querySelectorAll('.nav-sub-link').length, 3); assert.equal(h.document.querySelectorAll('.platform-card-link').length, 3); for (const platform of ['google', 'facebook', 'tiktok']) assert.ok(h.document.querySelector(`.nav-sub-link[href="#connections/${platform}"]`)); }
     }
+    h.w.location.hash = 'connections/google'; await h.until(() => h.document.querySelector('.nav-sub-link[href="#connections/google"].active'));
+    assert.equal(h.document.querySelector('[data-action=connect-google]').disabled, true); assert.match(h.document.querySelector('#content').textContent, /Chưa cấu hình Google OAuth/);
+    h.w.location.hash = 'connections/facebook'; await h.until(() => h.document.querySelector('.nav-sub-link[href="#connections/facebook"].active'));
+    assert.match(h.document.querySelector('#content').textContent, /Meta API chưa được tích hợp ở backend/); assert.equal(h.document.querySelector('#content button[disabled]').textContent, 'Kết nối Facebook'); assert.ok(h.document.querySelector('a[href="https://developers.facebook.com/docs/marketing-apis/"]'));
+    h.w.location.hash = 'connections/tiktok'; await h.until(() => h.document.querySelector('.nav-sub-link[href="#connections/tiktok"].active'));
+    assert.match(h.document.querySelector('#content').textContent, /TikTok API chưa được tích hợp ở backend/); assert.equal(h.document.querySelector('#content button[disabled]').textContent, 'Kết nối TikTok'); assert.ok(h.document.querySelector('a[href="https://business-api.tiktok.com/portal/docs"]'));
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
   const viewer = await harness({ role: 'viewer' }); try {
