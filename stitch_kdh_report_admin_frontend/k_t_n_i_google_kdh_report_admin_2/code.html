@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"sidebar-surface":"#0F172A","error-container":"#ffdad6","on-tertiary-container":"#fcfcff","on-tertiary":"#ffffff","surface-container-lowest":"#ffffff","metric-gsc":"#0284C7","primary-fixed":"#89f5e7","on-surface":"#0b1c30","on-primary-container":"#f4fffc","inverse-primary":"#6bd8cb","surface":"#f8f9ff","outline-variant":"#bcc9c6","surface-bright":"#f8f9ff","border-strong":"#CBD5E1","outline":"#6d7a77","on-tertiary-fixed":"#001e2d","surface-tint":"#006a61","secondary-fixed-dim":"#bec6e0","primary":"#00685f","secondary-container":"#dae2fd","status-fresh":"#14B8A6","tertiary-fixed":"#c6e7ff","status-stale":"#EF4444","surface-container-high":"#dce9ff","on-primary":"#ffffff","metric-keywords":"#10B981","sidebar-elevated":"#1E293B","on-background":"#0b1c30","tertiary":"#00638a","primary-fixed-dim":"#6bd8cb","on-surface-variant":"#3d4947","surface-variant":"#d3e4fe","surface-container-highest":"#d3e4fe","slate-bg":"#F8FAFC","brand-magenta":"#E91E63","background":"#f8f9ff","secondary":"#565e74","on-secondary-container":"#5c647a","card-bg":"#FFFFFF","surface-container":"#e5eeff","on-primary-fixed-variant":"#005049","on-error-container":"#93000a","surface-dim":"#cbdbf5","tertiary-container":"#007dad","tertiary-fixed-dim":"#82cfff","primary-container":"#008378","on-secondary":"#ffffff","on-error":"#ffffff","border-subtle":"#E2E8F0","metric-ga4":"#F59E0B","inverse-on-surface":"#eaf1ff","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-primary-fixed":"#00201d","inverse-surface":"#213145","error":"#ba1a1a","secondary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#004c6b","surface-container-low":"#eff4ff","brand-rose":"#FF6FA5"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-2xs":"0.25rem","gutter-desktop":"1.5rem","space-md":"1rem","gutter":"1.25rem","space-xs":"0.5rem","space-2xl":"3rem","space-sm":"0.75rem","margin-desktop":"2rem","space-lg":"1.5rem","margin":"1rem","space-xl":"2rem"},"fontFamily":{"headline-lg":["Inter"],"body-sm":["Inter"],"label-md":["Inter"],"data-table":["Inter"],"headline-sm":["Inter"],"headline-xl":["Inter"],"headline-md":["Inter"],"label-xs":["Inter"],"body-md":["Inter"],"body-lg":["Inter"],"data-metric":["Inter"]},"fontSize":{"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"data-table":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"headline-xl":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-xs":["10px",{"lineHeight":"12px","letterSpacing":"0.04em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"data-metric":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}]}}}}</script></head><body class="bg-slate-bg font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-sidebar-surface z-50 flex flex-col justify-between border-r border-sidebar-elevated"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 flex items-center gap-space-sm px-space-md border-b border-sidebar-elevated bg-sidebar-surface"><img alt="KinderHealth Report Admin Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W0zKmem6WlX5NnFKkU89v4hdV1YlJTjcUqAbTQerQ41K3tj_otofa00e5lEulx1_x30rfRJ0N0_PeHG0XlDqqiJQqwgl-vlC_Bj2U1EvuSXP0-eWWRtrwjZHZQ9ApxZgbnF4CT9WaC3oVmMcvYevuAe2ZKbVJ9F79Xo3gchoZ-GTRFFn4YHMumYMxE3vgwCiL6Z3mO0u3ZH-jb0fjS_-2X5C1zGP8IdgM8kQu_3AveT1xautkqkxMTCvgc"/><div class="flex flex-col"><span class="text-white font-headline-sm text-sm tracking-tight leading-none">KinderHealth</span><span class="text-outline text-label-xs uppercase mt-space-2xs tracking-wider">Report Admin</span></div></div><div class="px-space-md py-space-sm"><div class="text-label-xs text-outline uppercase font-semibold px-space-xs mb-space-xs">Báo cáo Marketing</div><nav class="space-y-space-2xs" data-active-classes="bg-sidebar-elevated text-primary-fixed border-l-2 border-primary font-semibold"><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="tong-quan" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-md text-data-table">Tổng quan</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="phan-tich-xuat-excel" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">analytics</span><span class="font-body-md text-data-table">Phân tích &amp; Xuất Excel</span></div><span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded">CORE</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="bao-cao-da-luu" href="#"><span class="material-symbols-outlined text-[18px]">bookmark</span><span class="font-body-md text-data-table">Báo cáo đã lưu</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="ket-noi-google" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-body-md text-data-table">Kết nối Google</span></div><span class="bg-sidebar-elevated text-status-fresh border border-status-fresh/30 text-[9px] font-bold px-1 py-0.5 rounded uppercase">ADMIN</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="lich-su-hoat-dong" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-body-md text-data-table">Lịch sử hoạt động</span></a></nav></div><div class="px-space-md py-space-xs"><div class="text-label-xs text-outline uppercase font-semibold px-space-xs mb-space-xs flex items-center justify-between"><span>Vận hành</span><span class="material-symbols-outlined text-outline text-[16px]">expand_more</span></div><nav class="space-y-space-2xs" data-active-classes="bg-sidebar-elevated text-primary-fixed border-l-2 border-primary font-semibold"><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="du-lieu-dau-vao" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-body-md text-data-table">Dữ liệu đầu vào</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="lich-tu-dong" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-body-md text-data-table">Lịch tự động</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="nguoi-dung" href="#"><span class="material-symbols-outlined text-[18px]">group</span><span class="font-body-md text-data-table">Người dùng</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="cai-dat" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-md text-data-table">Cài đặt</span></a></nav></div></div><div class="p-space-md border-t border-sidebar-elevated bg-sidebar-surface/90"><div class="bg-sidebar-elevated/80 border border-slate-700/60 rounded p-space-xs mb-space-xs"><div class="flex items-center gap-1.5 mb-1"><span class="w-2 h-2 rounded-full bg-status-fresh animate-pulse"></span><span class="text-[11px] text-white font-medium">Google Sẵn sàng</span></div><p class="text-[10px] text-outline truncate">marketing@kinderhealth.vn</p></div><div class="flex items-center justify-between text-[11px] text-outline px-space-2xs"><span>Hệ thống KDH</span><span class="font-mono">v1.2.0</span></div></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-card-bg border-b border-border-subtle z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><img alt="KinderHealth Report Admin Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W0zKmem6WlX5NnFKkU89v4hdV1YlJTjcUqAbTQerQ41K3tj_otofa00e5lEulx1_x30rfRJ0N0_PeHG0XlDqqiJQqwgl-vlC_Bj2U1EvuSXP0-eWWRtrwjZHZQ9ApxZgbnF4CT9WaC3oVmMcvYevuAe2ZKbVJ9F79Xo3gchoZ-GTRFFn4YHMumYMxE3vgwCiL6Z3mO0u3ZH-jb0fjS_-2X5C1zGP8IdgM8kQu_3AveT1xautkqkxMTCvgc"/><div class="h-4 w-px bg-border-subtle mx-space-2xs"></div><div class="flex items-center gap-space-2xs text-body-sm text-secondary"><span class="font-medium text-on-surface-variant">KinderHealth</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-semibold text-primary">Trung tâm Báo cáo</span></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs bg-emerald-50 text-status-fresh border border-status-fresh/20 px-space-sm py-1 rounded text-label-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span><span>3/3 nguồn dữ liệu ổn định (GA4, GSC, GMB)</span></div><button class="inline-flex items-center gap-space-2xs bg-surface-container-low hover:bg-surface-container text-on-surface border border-border-strong text-body-sm font-medium px-space-sm py-1.5 rounded transition-colors" type="button"><span class="material-symbols-outlined text-[16px] text-primary">open_in_new</span><span class="font-label-md text-label-md">Mở dashboard hiện tại</span></button><div class="relative"><button class="p-1.5 rounded hover:bg-slate-bg text-secondary hover:text-on-surface transition-colors flex items-center justify-center" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-brand-magenta"></span></button></div><div class="h-6 w-px bg-border-subtle"></div><div class="flex items-center gap-space-sm pl-space-2xs cursor-pointer"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden md:flex flex-col text-left"><span class="text-body-sm font-semibold text-on-surface leading-tight">BS. Minh Anh</span><span class="text-[11px] text-secondary leading-tight">Admin / Quản trị</span></div><span class="material-symbols-outlined text-secondary text-[16px]">arrow_drop_down</span></div></div></header><main class="w-full pt-16 bg-slate-bg min-h-screen px-gutter-desktop py-space-lg"><div class="flex flex-col w-full">
+<!-- Top Utility Ribbon / System Breadcrumb -->
+<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-sm mb-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs text-secondary font-label-md text-label-md mb-space-2xs">
+<span class="inline-flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+<span>QUẢN TRỊ BẢO MẬT</span>
+</span>
+<span class="text-secondary opacity-60">/</span>
+<span class="text-on-surface-variant">Xác thực Google API</span>
+</div>
+<h1 class="text-on-surface font-headline-xl text-headline-xl tracking-tight">Kết nối tài khoản Google</h1>
+<p class="text-secondary font-body-md text-body-md mt-space-2xs max-w-3xl">
+        Ủy quyền truy cập an toàn vào GA4, Search Console và Google Sheets nội bộ của phòng khám KinderHealth.
+      </p>
+</div>
+<!-- Security Tier Badge -->
+<div class="flex items-center gap-space-xs self-start md:self-auto bg-surface-container-high/60 px-space-md py-space-xs rounded-xl shadow-sm">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div class="flex flex-col">
+<span class="text-label-xs font-label-xs text-on-surface-variant uppercase tracking-wider">Cấp bậc xác thực</span>
+<span class="text-body-sm font-headline-sm text-on-surface font-semibold">Zero-Token Client (OAuth 2.0)</span>
+</div>
+</div>
+</div>
+<!-- Primary Active Connection Banner Card -->
+<div class="relative overflow-hidden bg-card-bg rounded-xl shadow-md p-space-lg mb-space-xl">
+<!-- Decorative Ambient Glow -->
+<div class="absolute -right-16 -top-16 w-72 h-72 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-space-lg">
+<!-- Left: Identity & Scope overview -->
+<div class="flex items-start gap-space-md max-w-3xl">
+<div class="w-14 h-14 rounded-xl bg-surface-container-low flex items-center justify-center shadow-sm shrink-0 mt-0.5">
+<svg aria-hidden="true" class="w-8 h-8" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"></path>
+</svg>
+</div>
+<div class="flex flex-col">
+<div class="flex flex-wrap items-center gap-space-xs mb-space-2xs">
+<span class="inline-flex items-center gap-1.5 bg-emerald-50 text-metric-keywords px-2.5 py-1 rounded text-label-xs font-label-xs tracking-wide">
+<span class="w-2 h-2 rounded-full bg-metric-keywords animate-pulse"></span>
+              ĐÃ KẾT NỐI THÀNH CÔNG
+            </span>
+<span class="bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded text-label-xs font-label-xs">
+              Chế độ chỉ đọc (Read-only)
+            </span>
+</div>
+<div class="flex items-baseline gap-space-xs flex-wrap">
+<span class="font-headline-lg text-headline-lg text-on-surface font-semibold tracking-tight">marketing@kinderhealth.vn</span>
+<span class="text-secondary font-body-sm text-body-sm">(Tài khoản ủy quyền trung tâm)</span>
+</div>
+<p class="text-on-surface-variant font-body-md text-body-md mt-space-2xs">
+            Quyền hạn ứng dụng: <strong class="text-on-surface font-medium">Đọc dữ liệu báo cáo</strong> (Google Analytics 4 Properties, Search Console Query Metrics, Google Sheets Master Tracking).
+          </p>
+<div class="flex flex-wrap items-center gap-y-2 gap-x-space-md text-body-sm text-secondary font-body-sm mt-space-sm pt-space-xs border-t-0">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">schedule</span>
+<span>Thời điểm kiểm tra: <strong class="text-on-surface font-medium">28/09/2024 lúc 09:00 (Hôm nay)</strong></span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-metric-gsc">refresh</span>
+<span>Tần suất đồng bộ: <strong class="text-on-surface font-medium">Tự động mỗi 12 tiếng</strong></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Action Buttons Group -->
+<div class="flex flex-col sm:flex-row lg:flex-col gap-space-xs min-w-[210px] w-full lg:w-auto shrink-0 pt-2 lg:pt-0">
+<!-- Re-check Button -->
+<button class="w-full inline-flex items-center justify-center gap-space-2xs bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md px-space-md py-2.5 rounded-lg shadow-sm transition-all duration-150 active:scale-[0.99] cursor-pointer" id="btnRecheck" onclick="handleRecheck(this)" type="button">
+<span class="material-symbols-outlined text-[18px]" id="recheckIcon">verified</span>
+<span id="recheckText">Kiểm tra lại quyền (Re-check)</span>
+</button>
+<!-- Re-authorize Button -->
+<button class="w-full inline-flex items-center justify-center gap-space-2xs bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md px-space-md py-2.5 rounded-lg shadow-sm transition-all duration-150 cursor-pointer" onclick="handleReauthorize()" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">sync_alt</span>
+<span>Kết nối lại (Re-authorize)</span>
+</button>
+<!-- Disconnect Button -->
+<button class="w-full inline-flex items-center justify-center gap-space-2xs bg-error-container/40 hover:bg-error-container text-error font-label-md text-label-md px-space-md py-2 rounded-lg transition-colors cursor-pointer mt-1" onclick="openDisconnectModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">link_off</span>
+<span>Ngắt kết nối</span>
+</button>
+</div>
+</div>
+<!-- Security Notice Card (Zero-token reassurance) -->
+<div class="mt-space-md bg-surface-container-low rounded-lg p-space-sm flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">lock_clock</span>
+<div class="text-body-sm font-body-sm text-on-surface-variant leading-relaxed">
+<strong class="text-on-surface font-semibold">Chính sách bảo mật dữ liệu y tế:</strong>
+        Kết nối có thể cần ủy quyền lại nếu Google thu hồi token hoặc thay đổi mật khẩu tài khoản.
+        Hệ thống KinderHealth vận hành theo chuẩn <span class="font-medium text-primary">Token-Free Front-end</span>: không lưu trữ OAuth token, client secret hay mật khẩu trong trình duyệt hoặc thiết bị của nhân viên.
+      </div>
+</div>
+</div>
+<!-- Section: Data Health Check Matrix -->
+<div class="mb-space-xl">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-xs mb-space-sm">
+<div>
+<h2 class="text-headline-md font-headline-md text-on-surface font-semibold">Trạng thái kiểm tra từng nguồn dữ liệu</h2>
+<p class="text-secondary font-body-sm text-body-sm">Chi tiết 3 kết nối API độc lập phục vụ việc trích xuất báo cáo phòng khám</p>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="text-label-xs font-label-xs uppercase text-secondary font-semibold">Tất cả dịch vụ:</span>
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded text-label-xs font-label-xs font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> 3/3 KHẢ DỤNG
+        </span>
+</div>
+</div>
+<!-- Bento-styled Health Matrix Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-space-md">
+<!-- Source 1: GA4 Card -->
+<div class="bg-card-bg rounded-xl p-space-lg shadow-sm flex flex-col justify-between transition-shadow hover:shadow-md">
+<div>
+<!-- Header Source -->
+<div class="flex items-center justify-between gap-space-xs mb-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-label-xs font-label-xs uppercase font-bold bg-[#FFFBEB] text-metric-ga4">
+<span class="material-symbols-outlined text-[14px]">analytics</span>
+              Google Analytics 4
+            </span>
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded text-label-xs font-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Sẵn sàng (200 OK)
+            </span>
+</div>
+<!-- Property Name -->
+<h3 class="text-headline-sm font-headline-sm text-on-surface font-semibold mb-1">KinderHealth Main</h3>
+<p class="text-secondary font-body-sm text-body-sm mb-space-md">ID tài sản: <code class="bg-surface-container px-1.5 py-0.5 rounded text-on-surface font-mono text-[12px]">484358741</code></p>
+<!-- Specifications List -->
+<div class="space-y-space-xs bg-surface-container-low p-space-sm rounded-lg mb-space-md text-body-sm font-body-sm">
+<div class="flex justify-between items-center">
+<span class="text-secondary">Quyền truy cập:</span>
+<span class="font-medium text-on-surface bg-card-bg px-2 py-0.5 rounded shadow-sm">Viewer / Read-only</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-secondary">Phiên bản giao thức:</span>
+<span class="font-medium text-on-surface">Data API v1beta</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-secondary">Latency phản hồi:</span>
+<span class="font-medium text-status-fresh font-mono">142ms</span>
+</div>
+</div>
+</div>
+<div>
+<!-- Technical Note -->
+<div class="flex items-start gap-space-2xs text-secondary font-body-sm text-body-sm mb-space-sm">
+<span class="material-symbols-outlined text-[16px] text-metric-ga4 shrink-0 mt-0.5">check_circle</span>
+<span>Kết nối API v1beta hợp lệ, luồng dữ liệu lượt đặt lịch khám khả dụng.</span>
+</div>
+<div class="pt-space-xs flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-secondary">Đồng bộ gần nhất: 12 phút trước</span>
+<button class="text-primary hover:text-primary-container text-label-xs font-label-xs uppercase font-semibold flex items-center gap-1 cursor-pointer" onclick="pingService('GA4', this)">
+<span class="material-symbols-outlined text-[14px]">sensors</span> Kiểm tra ping
+            </button>
+</div>
+</div>
+</div>
+<!-- Source 2: Google Search Console Card -->
+<div class="bg-card-bg rounded-xl p-space-lg shadow-sm flex flex-col justify-between transition-shadow hover:shadow-md">
+<div>
+<!-- Header Source -->
+<div class="flex items-center justify-between gap-space-xs mb-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-label-xs font-label-xs uppercase font-bold bg-[#F0F9FF] text-metric-gsc">
+<span class="material-symbols-outlined text-[14px]">travel_explore</span>
+              Search Console
+            </span>
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded text-label-xs font-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Sẵn sàng (200 OK)
+            </span>
+</div>
+<!-- Property Name -->
+<h3 class="text-headline-sm font-headline-sm text-on-surface font-semibold mb-1 truncate" title="https://kinderhealth.vn/">https://kinderhealth.vn/</h3>
+<p class="text-secondary font-body-sm text-body-sm mb-space-md">Loại xác minh: <span class="bg-surface-container px-1.5 py-0.5 rounded text-on-surface text-[12px]">Domain URL prefix</span></p>
+<!-- Specifications List -->
+<div class="space-y-space-xs bg-surface-container-low p-space-sm rounded-lg mb-space-md text-body-sm font-body-sm">
+<div class="flex justify-between items-center">
+<span class="text-secondary">Quyền tài sản:</span>
+<span class="font-medium text-on-surface bg-card-bg px-2 py-0.5 rounded shadow-sm">Verified Owner / Full</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-secondary">Endpoint xử lý:</span>
+<span class="font-medium text-on-surface font-mono text-[12px]">searchAnalytics:query</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-secondary">Latency phản hồi:</span>
+<span class="font-medium text-status-fresh font-mono">198ms</span>
+</div>
+</div>
+</div>
+<div>
+<!-- Technical Note -->
+<div class="flex items-start gap-space-2xs text-secondary font-body-sm text-body-sm mb-space-sm">
+<span class="material-symbols-outlined text-[16px] text-metric-gsc shrink-0 mt-0.5">check_circle</span>
+<span>Dữ liệu searchAnalyticsQuery khả dụng (Clicks, Impressions, CTR, Vị trí).</span>
+</div>
+<div class="pt-space-xs flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-secondary">Đồng bộ gần nhất: 12 phút trước</span>
+<button class="text-primary hover:text-primary-container text-label-xs font-label-xs uppercase font-semibold flex items-center gap-1 cursor-pointer" onclick="pingService('GSC', this)">
+<span class="material-symbols-outlined text-[14px]">sensors</span> Kiểm tra ping
+            </button>
+</div>
+</div>
+</div>
+<!-- Source 3: Google Sheets Keyword Tracking Card -->
+<div class="bg-card-bg rounded-xl p-space-lg shadow-sm flex flex-col justify-between transition-shadow hover:shadow-md">
+<div>
+<!-- Header Source -->
+<div class="flex items-center justify-between gap-space-xs mb-space-sm">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-label-xs font-label-xs uppercase font-bold bg-[#ECFDF5] text-metric-keywords">
+<span class="material-symbols-outlined text-[14px]">table_chart</span>
+              Sheets Tracking
+            </span>
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded text-label-xs font-label-xs font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Sẵn sàng (200 OK)
+            </span>
+</div>
+<!-- Property Name -->
+<h3 class="text-headline-sm font-headline-sm text-on-surface font-semibold mb-1 truncate" title="KDH_SEO_Keyword_Master">KDH_SEO_Keyword_Master</h3>
+<p class="text-secondary font-body-sm text-body-sm mb-space-md">Trang tính đích: <span class="bg-surface-container px-1.5 py-0.5 rounded text-on-surface font-mono text-[12px]">Tab: 'Ranking'</span></p>
+<!-- Specifications List -->
+<div class="space-y-space-xs bg-surface-container-low p-space-sm rounded-lg mb-space-md text-body-sm font-body-sm">
+<div class="flex justify-between items-center">
+<span class="text-secondary">Quyền trang tính:</span>
+<span class="font-medium text-on-surface bg-card-bg px-2 py-0.5 rounded shadow-sm">Read-only Spreadsheet</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-secondary">Quy mô tệp nạp:</span>
+<span class="font-semibold text-primary">142 dòng từ khóa hợp lệ</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-secondary">Latency phản hồi:</span>
+<span class="font-medium text-status-fresh font-mono">215ms</span>
+</div>
+</div>
+</div>
+<div>
+<!-- Technical Note -->
+<div class="flex items-start gap-space-2xs text-secondary font-body-sm text-body-sm mb-space-sm">
+<span class="material-symbols-outlined text-[16px] text-metric-keywords shrink-0 mt-0.5">check_circle</span>
+<span>Đọc được 142 dòng từ khóa hợp lệ, cấu trúc cột chuẩn hóa khớp 100%.</span>
+</div>
+<div class="pt-space-xs flex items-center justify-between">
+<span class="text-label-xs font-label-xs text-secondary">Đồng bộ gần nhất: 12 phút trước</span>
+<button class="text-primary hover:text-primary-container text-label-xs font-label-xs uppercase font-semibold flex items-center gap-1 cursor-pointer" onclick="pingService('Sheets', this)">
+<span class="material-symbols-outlined text-[14px]">sensors</span> Kiểm tra ping
+            </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Grid: Troubleshooting FAQ & Read-only Technical Metadata -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg mb-space-xl">
+<!-- Troubleshooting Guide (8 cols) -->
+<div class="lg:col-span-8 bg-card-bg rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center gap-space-xs mb-space-xs">
+<span class="material-symbols-outlined text-primary text-[24px]">contact_support</span>
+<h2 class="text-headline-md font-headline-md text-on-surface font-semibold">Hướng dẫn xử lý sự cố &amp; Cấp quyền tài khoản</h2>
+</div>
+<p class="text-secondary font-body-md text-body-md mb-space-lg">
+          Nếu một trong các nguồn báo trạng thái <span class="bg-error-container text-error px-1.5 py-0.5 rounded font-mono font-semibold text-body-sm">403 Permission Denied</span> hoặc không tải được số liệu:
+        </p>
+<!-- 3 Step Protocol Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md mb-space-md">
+<!-- Step 1 -->
+<div class="bg-surface-container-low rounded-xl p-space-md relative flex flex-col">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary font-bold flex items-center justify-center text-body-md font-body-md mb-space-xs shadow-sm">
+              1
+            </div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">Xác định nguồn</h4>
+<p class="text-secondary font-body-sm text-body-sm leading-relaxed">
+              Quan sát thẻ nguồn dữ liệu báo đỏ trong bảng kiểm tra phía trên (GA4, Search Console hoặc Sheets).
+            </p>
+</div>
+<!-- Step 2 -->
+<div class="bg-surface-container-low rounded-xl p-space-md relative flex flex-col">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary font-bold flex items-center justify-center text-body-md font-body-md mb-space-xs shadow-sm">
+              2
+            </div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">Cấp quyền Viewer</h4>
+<p class="text-secondary font-body-sm text-body-sm leading-relaxed">
+              Yêu cầu Quản trị viên tài sản chia sẻ quyền <strong class="text-on-surface">Viewer / Người xem</strong> trực tiếp cho email:
+            </p>
+<div class="mt-2 bg-card-bg p-1.5 rounded flex items-center justify-between text-[11px] font-mono text-primary font-semibold">
+<span class="truncate">marketing@kinderhealth.vn</span>
+<button class="text-secondary hover:text-on-surface ml-1 cursor-pointer" onclick="navigator.clipboard.writeText('marketing@kinderhealth.vn'); alert('Đã sao chép email!');" title="Sao chép email">
+<span class="material-symbols-outlined text-[14px]">content_copy</span>
+</button>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="bg-surface-container-low rounded-xl p-space-md relative flex flex-col">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary font-bold flex items-center justify-center text-body-md font-body-md mb-space-xs shadow-sm">
+              3
+            </div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface font-semibold mb-1">Kiểm tra lại quyền</h4>
+<p class="text-secondary font-body-sm text-body-sm leading-relaxed">
+              Bấm nút <strong class="text-on-surface">"Kiểm tra lại quyền (Re-check)"</strong> ở đầu trang để kiểm tra kết nối ngay lập tức.
+            </p>
+</div>
+</div>
+</div>
+<!-- Quick Note Reminder -->
+<div class="bg-[#ECFDF5] text-metric-keywords rounded-lg p-space-sm flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] shrink-0">check</span>
+<span class="text-body-sm font-body-sm">
+<strong>Tiết kiệm thời gian vận hành:</strong> Không cần cấu hình mã token bí mật hay tải lên tệp JSON credentials phức tạp.
+        </span>
+</div>
+</div>
+<!-- Right Side: Technical Metadata & OAuth Parameters (4 cols) -->
+<div class="lg:col-span-4 bg-card-bg rounded-xl p-space-lg shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[22px]">code</span>
+<h2 class="text-headline-sm font-headline-sm text-on-surface font-semibold">Thông số kỹ thuật OAuth</h2>
+</div>
+<span class="bg-surface-container px-2 py-0.5 rounded text-label-xs font-label-xs text-secondary uppercase font-mono">Chỉ đọc</span>
+</div>
+<p class="text-secondary font-body-sm text-body-sm mb-space-md">
+          Cấu hình an toàn máy chủ phục vụ kiểm định API và chứng chỉ đối soát định kỳ.
+        </p>
+<!-- Technical List -->
+<div class="space-y-space-sm text-body-sm font-body-sm">
+<div class="flex flex-col gap-1 bg-surface-container-low p-space-xs rounded-lg">
+<span class="text-secondary font-label-xs text-label-xs uppercase">Backend Callback Endpoint</span>
+<code class="font-mono text-primary text-[12px] break-all select-all font-semibold">/api/auth/google/callback</code>
+</div>
+<div class="flex flex-col gap-1 bg-surface-container-low p-space-xs rounded-lg">
+<span class="text-secondary font-label-xs text-label-xs uppercase">OAuth Scopes Ủy Quyền</span>
+<div class="flex flex-col gap-1 mt-1 font-mono text-[11px] text-on-surface-variant">
+<span class="bg-card-bg px-2 py-1 rounded shadow-xs truncate">analytics.readonly</span>
+<span class="bg-card-bg px-2 py-1 rounded shadow-xs truncate">webmasters.readonly</span>
+<span class="bg-card-bg px-2 py-1 rounded shadow-xs truncate">spreadsheets.readonly</span>
+</div>
+</div>
+<div class="flex flex-col gap-1 bg-surface-container-low p-space-xs rounded-lg">
+<span class="text-secondary font-label-xs text-label-xs uppercase">Múi giờ &amp; Chu kỳ phân tích</span>
+<div class="flex items-center justify-between text-on-surface font-medium">
+<span>Asia/Ho_Chi_Minh</span>
+<span class="font-mono bg-card-bg px-1.5 py-0.5 rounded text-[11px] text-secondary">GMT+07:00</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Diagnostics Link -->
+<div class="pt-space-md mt-space-md border-t-0 flex items-center justify-between text-label-xs font-label-xs text-secondary">
+<span>Giao thức: TLS 1.3 / Strict-Origin</span>
+<button class="text-primary hover:underline font-semibold cursor-pointer" onclick="toggleRawMetadata()">
+          Xem Header Auth
+        </button>
+</div>
+</div>
+</div>
+<!-- Raw Header Meta Collapsible (Hidden by default) -->
+<div class="hidden bg-sidebar-surface text-white p-space-md rounded-xl mb-space-lg shadow-md font-mono text-[12px]" id="rawMetaSection">
+<div class="flex items-center justify-between pb-space-xs border-b border-sidebar-elevated mb-space-xs text-outline">
+<span class="uppercase text-label-xs font-label-xs font-semibold">Raw Diagnostic Headers (Read-Only)</span>
+<button class="text-white hover:text-primary-fixed" onclick="toggleRawMetadata()">Đóng</button>
+</div>
+<pre class="overflow-x-auto text-primary-fixed/90 leading-relaxed">X-KDH-Auth-Method: OAuth2-ServerSide-Encrypted
+X-Google-Client-ID: 9812480129-kdh***.apps.googleusercontent.com
+X-Session-Active-Since: 2024-09-28T09:00:00+07:00
+X-Health-Status-All: 200 OK
+X-Audit-Log-Recorded: YES (Admin: BS. Minh Anh)
+    </pre>
+</div>
+<!-- Modal Xác nhận Ngắt kết nối Google (Modal Confirmation) -->
+<div class="fixed inset-0 z-50 hidden flex items-center justify-center bg-sidebar-surface/70 backdrop-blur-xs transition-opacity p-space-md" id="disconnectModal">
+<div class="bg-card-bg w-full max-w-md rounded-xl shadow-xl p-space-lg flex flex-col relative animate-in fade-in zoom-in-95 duration-150">
+<div class="w-12 h-12 rounded-xl bg-error-container text-error flex items-center justify-center mb-space-md">
+<span class="material-symbols-outlined text-[28px]">warning</span>
+</div>
+<h3 class="text-headline-md font-headline-md text-on-surface font-semibold mb-space-2xs">
+        Xác nhận ngắt kết nối Google?
+      </h3>
+<p class="text-secondary font-body-md text-body-md mb-space-md leading-relaxed">
+        Thao tác này sẽ hủy quyền truy cập của hệ thống vào tài khoản <strong class="text-on-surface">marketing@kinderhealth.vn</strong>. 
+        Mọi bảng điều khiển báo cáo tự động (GA4, Search Console, Keyword Tracking) sẽ tạm thời ngừng cập nhật số liệu.
+      </p>
+<div class="bg-surface-container-low p-space-sm rounded-lg mb-space-lg flex items-center gap-space-xs text-body-sm font-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-primary text-[18px]">info</span>
+<span>Bạn có thể kết nối lại bất kỳ lúc nào mà không bị mất dữ liệu lịch sử đã lưu.</span>
+</div>
+<div class="flex items-center justify-end gap-space-sm">
+<button class="px-space-md py-2 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md cursor-pointer transition-colors" onclick="closeDisconnectModal()" type="button">
+          Hủy bỏ
+        </button>
+<button class="px-space-md py-2 rounded-lg bg-error hover:bg-error/90 text-on-error font-label-md text-label-md shadow-sm cursor-pointer transition-colors" onclick="confirmDisconnect()" type="button">
+          Xác nhận ngắt kết nối
+        </button>
+</div>
+</div>
+</div>
+<!-- Interactive Logic Handlers (Vanilla JavaScript) -->
+<script>
+    function handleRecheck(btn) {
+      const icon = document.getElementById('recheckIcon');
+      const text = document.getElementById('recheckText');
+      
+      btn.disabled = true;
+      icon.classList.add('animate-spin');
+      icon.textContent = 'sync';
+      text.textContent = 'Đang kiểm tra kết nối...';
+
+      setTimeout(() => {
+        btn.disabled = false;
+        icon.classList.remove('animate-spin');
+        icon.textContent = 'check_circle';
+        text.textContent = 'Tất cả 3 nguồn sẵn sàng (200 OK)';
+
+        // Flash temporary green toast / reset after 3 seconds
+        setTimeout(() => {
+          icon.textContent = 'verified';
+          text.textContent = 'Kiểm tra lại quyền (Re-check)';
+        }, 3000);
+      }, 1200);
+    }
+
+    function handleReauthorize() {
+      const confirmed = confirm('Chuyển hướng đến cổng xác thực tài khoản Google an toàn của KinderHealth?');
+      if (confirmed) {
+        window.location.href = '#';
+      }
+    }
+
+    function pingService(name, btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">refresh</span> Đang ping...';
+      
+      setTimeout(() => {
+        btn.innerHTML = '<span class="material-symbols-outlined text-[14px] text-status-fresh">check</span> ' + name + ' OK (150ms)';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+        }, 2500);
+      }, 800);
+    }
+
+    function toggleRawMetadata() {
+      const section = document.getElementById('rawMetaSection');
+      section.classList.toggle('hidden');
+    }
+
+    function openDisconnectModal() {
+      const modal = document.getElementById('disconnectModal');
+      modal.classList.remove('hidden');
+    }
+
+    function closeDisconnectModal() {
+      const modal = document.getElementById('disconnectModal');
+      modal.classList.add('hidden');
+    }
+
+    function confirmDisconnect() {
+      closeDisconnectModal();
+      alert('Đã ngắt kết nối an toàn tài khoản marketing@kinderhealth.vn.');
+    }
+  </script>
+</div></main></div></body></html>

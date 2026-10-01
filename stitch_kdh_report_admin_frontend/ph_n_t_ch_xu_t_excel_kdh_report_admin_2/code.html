@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"sidebar-surface":"#0F172A","error-container":"#ffdad6","on-tertiary-container":"#fcfcff","on-tertiary":"#ffffff","surface-container-lowest":"#ffffff","metric-gsc":"#0284C7","primary-fixed":"#89f5e7","on-surface":"#0b1c30","on-primary-container":"#f4fffc","inverse-primary":"#6bd8cb","surface":"#f8f9ff","outline-variant":"#bcc9c6","surface-bright":"#f8f9ff","border-strong":"#CBD5E1","outline":"#6d7a77","on-tertiary-fixed":"#001e2d","surface-tint":"#006a61","secondary-fixed-dim":"#bec6e0","primary":"#00685f","secondary-container":"#dae2fd","status-fresh":"#14B8A6","tertiary-fixed":"#c6e7ff","status-stale":"#EF4444","surface-container-high":"#dce9ff","on-primary":"#ffffff","metric-keywords":"#10B981","sidebar-elevated":"#1E293B","on-background":"#0b1c30","tertiary":"#00638a","primary-fixed-dim":"#6bd8cb","on-surface-variant":"#3d4947","surface-variant":"#d3e4fe","surface-container-highest":"#d3e4fe","slate-bg":"#F8FAFC","brand-magenta":"#E91E63","background":"#f8f9ff","secondary":"#565e74","on-secondary-container":"#5c647a","card-bg":"#FFFFFF","surface-container":"#e5eeff","on-primary-fixed-variant":"#005049","on-error-container":"#93000a","surface-dim":"#cbdbf5","tertiary-container":"#007dad","tertiary-fixed-dim":"#82cfff","primary-container":"#008378","on-secondary":"#ffffff","on-error":"#ffffff","border-subtle":"#E2E8F0","metric-ga4":"#F59E0B","inverse-on-surface":"#eaf1ff","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-primary-fixed":"#00201d","inverse-surface":"#213145","error":"#ba1a1a","secondary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#004c6b","surface-container-low":"#eff4ff","brand-rose":"#FF6FA5"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-2xs":"0.25rem","gutter-desktop":"1.5rem","space-md":"1rem","gutter":"1.25rem","space-xs":"0.5rem","space-2xl":"3rem","space-sm":"0.75rem","margin-desktop":"2rem","space-lg":"1.5rem","margin":"1rem","space-xl":"2rem"},"fontFamily":{"headline-lg":["Inter"],"body-sm":["Inter"],"label-md":["Inter"],"data-table":["Inter"],"headline-sm":["Inter"],"headline-xl":["Inter"],"headline-md":["Inter"],"label-xs":["Inter"],"body-md":["Inter"],"body-lg":["Inter"],"data-metric":["Inter"]},"fontSize":{"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"data-table":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"headline-xl":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-xs":["10px",{"lineHeight":"12px","letterSpacing":"0.04em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"data-metric":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}]}}}}</script></head><body class="bg-slate-bg font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-sidebar-surface z-50 flex flex-col justify-between border-r border-sidebar-elevated"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 flex items-center gap-space-sm px-space-md border-b border-sidebar-elevated bg-sidebar-surface"><img alt="KinderHealth Report Admin Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W0zKmem6WlX5NnFKkU89v4hdV1YlJTjcUqAbTQerQ41K3tj_otofa00e5lEulx1_x30rfRJ0N0_PeHG0XlDqqiJQqwgl-vlC_Bj2U1EvuSXP0-eWWRtrwjZHZQ9ApxZgbnF4CT9WaC3oVmMcvYevuAe2ZKbVJ9F79Xo3gchoZ-GTRFFn4YHMumYMxE3vgwCiL6Z3mO0u3ZH-jb0fjS_-2X5C1zGP8IdgM8kQu_3AveT1xautkqkxMTCvgc"/><div class="flex flex-col"><span class="text-white font-headline-sm text-sm tracking-tight leading-none">KinderHealth</span><span class="text-outline text-label-xs uppercase mt-space-2xs tracking-wider">Report Admin</span></div></div><div class="px-space-md py-space-sm"><div class="text-label-xs text-outline uppercase font-semibold px-space-xs mb-space-xs">Báo cáo Marketing</div><nav class="space-y-space-2xs" data-active-classes="bg-sidebar-elevated text-primary-fixed border-l-2 border-primary font-semibold"><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="tong-quan" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-md text-data-table">Tổng quan</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="phan-tich-xuat-excel" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">analytics</span><span class="font-body-md text-data-table">Phân tích &amp; Xuất Excel</span></div><span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded">CORE</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="bao-cao-da-luu" href="#"><span class="material-symbols-outlined text-[18px]">bookmark</span><span class="font-body-md text-data-table">Báo cáo đã lưu</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="ket-noi-google" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-body-md text-data-table">Kết nối Google</span></div><span class="bg-sidebar-elevated text-status-fresh border border-status-fresh/30 text-[9px] font-bold px-1 py-0.5 rounded uppercase">ADMIN</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="lich-su-hoat-dong" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-body-md text-data-table">Lịch sử hoạt động</span></a></nav></div><div class="px-space-md py-space-xs"><div class="text-label-xs text-outline uppercase font-semibold px-space-xs mb-space-xs flex items-center justify-between"><span>Vận hành</span><span class="material-symbols-outlined text-outline text-[16px]">expand_more</span></div><nav class="space-y-space-2xs" data-active-classes="bg-sidebar-elevated text-primary-fixed border-l-2 border-primary font-semibold"><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="du-lieu-dau-vao" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-body-md text-data-table">Dữ liệu đầu vào</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="lich-tu-dong" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-body-md text-data-table">Lịch tự động</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="nguoi-dung" href="#"><span class="material-symbols-outlined text-[18px]">group</span><span class="font-body-md text-data-table">Người dùng</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="cai-dat" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-md text-data-table">Cài đặt</span></a></nav></div></div><div class="p-space-md border-t border-sidebar-elevated bg-sidebar-surface/90"><div class="bg-sidebar-elevated/80 border border-slate-700/60 rounded p-space-xs mb-space-xs"><div class="flex items-center gap-1.5 mb-1"><span class="w-2 h-2 rounded-full bg-status-fresh animate-pulse"></span><span class="text-[11px] text-white font-medium">Google Sẵn sàng</span></div><p class="text-[10px] text-outline truncate">marketing@kinderhealth.vn</p></div><div class="flex items-center justify-between text-[11px] text-outline px-space-2xs"><span>Hệ thống KDH</span><span class="font-mono">v1.2.0</span></div></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-card-bg border-b border-border-subtle z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><img alt="KinderHealth Report Admin Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W0zKmem6WlX5NnFKkU89v4hdV1YlJTjcUqAbTQerQ41K3tj_otofa00e5lEulx1_x30rfRJ0N0_PeHG0XlDqqiJQqwgl-vlC_Bj2U1EvuSXP0-eWWRtrwjZHZQ9ApxZgbnF4CT9WaC3oVmMcvYevuAe2ZKbVJ9F79Xo3gchoZ-GTRFFn4YHMumYMxE3vgwCiL6Z3mO0u3ZH-jb0fjS_-2X5C1zGP8IdgM8kQu_3AveT1xautkqkxMTCvgc"/><div class="h-4 w-px bg-border-subtle mx-space-2xs"></div><div class="flex items-center gap-space-2xs text-body-sm text-secondary"><span class="font-medium text-on-surface-variant">KinderHealth</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-semibold text-primary">Trung tâm Báo cáo</span></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs bg-emerald-50 text-status-fresh border border-status-fresh/20 px-space-sm py-1 rounded text-label-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span><span>3/3 nguồn dữ liệu ổn định (GA4, GSC, GMB)</span></div><button class="inline-flex items-center gap-space-2xs bg-surface-container-low hover:bg-surface-container text-on-surface border border-border-strong text-body-sm font-medium px-space-sm py-1.5 rounded transition-colors" type="button"><span class="material-symbols-outlined text-[16px] text-primary">open_in_new</span><span class="font-label-md text-label-md">Mở dashboard hiện tại</span></button><div class="relative"><button class="p-1.5 rounded hover:bg-slate-bg text-secondary hover:text-on-surface transition-colors flex items-center justify-center" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-brand-magenta"></span></button></div><div class="h-6 w-px bg-border-subtle"></div><div class="flex items-center gap-space-sm pl-space-2xs cursor-pointer"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden md:flex flex-col text-left"><span class="text-body-sm font-semibold text-on-surface leading-tight">BS. Minh Anh</span><span class="text-[11px] text-secondary leading-tight">Admin / Quản trị</span></div><span class="material-symbols-outlined text-secondary text-[16px]">arrow_drop_down</span></div></div></header><main class="w-full pt-16 bg-slate-bg min-h-screen px-gutter-desktop py-space-lg"><div class="flex flex-col w-full space-y-space-lg">
+<!-- TOP HEADER & CONTROLS SECTION -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+<!-- Row 1: Title, Export Trigger & Status Action -->
+<div class="flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[24px]">analytics</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<h1 class="font-headline-md text-headline-md text-on-surface">Phân tích &amp; Xuất Excel</h1>
+<span class="bg-primary/10 text-primary font-label-xs text-label-xs px-space-xs py-0.5 rounded uppercase">Vận hành v1.2</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">Hệ thống đồng bộ dữ liệu đa kênh &amp; kết xuất bảng tính chuẩn báo cáo quản trị</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="inline-flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md px-space-md py-2.5 rounded-lg shadow-sm transition-all transform active:scale-95" id="btn-export-open" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Xuất Báo Cáo Excel</span>
+<span class="bg-primary-fixed/20 text-primary-fixed text-[10px] font-mono px-1.5 py-0.5 rounded">.XLSX</span>
+</button>
+</div>
+</div>
+<!-- Row 2: Comprehensive Filter Control Bar -->
+<div class="bg-surface rounded-lg p-space-md flex flex-col xl:flex-row gap-space-md xl:items-center xl:justify-between">
+<div class="flex flex-wrap items-center gap-space-sm">
+<!-- Report Scope Selector -->
+<div class="flex flex-col">
+<label class="font-label-xs text-label-xs text-secondary uppercase mb-1">Loại báo cáo</label>
+<div class="relative inline-block">
+<select class="bg-card-bg text-on-surface font-body-md text-body-md pl-3 pr-8 py-1.5 rounded-lg shadow-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary" id="report-type">
+<option selected="" value="combined">Báo cáo Tổng hợp (GA4 + GSC + Keyword)</option>
+<option value="ga4">Chỉ Google Analytics 4 (GA4)</option>
+<option value="gsc">Chỉ Search Console (GSC)</option>
+<option value="keyword">Chỉ Keyword Tracking (Sheets)</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-2 text-secondary pointer-events-none text-[18px]">expand_more</span>
+</div>
+</div>
+<!-- Date Range Inputs -->
+<div class="flex flex-col">
+<label class="font-label-xs text-label-xs text-secondary uppercase mb-1">Khoảng thời gian khảo sát</label>
+<div class="flex items-center bg-card-bg rounded-lg shadow-sm px-space-sm py-1.5">
+<span class="material-symbols-outlined text-secondary text-[16px] mr-1.5">calendar_month</span>
+<input class="w-24 text-on-surface font-body-md text-body-md bg-transparent focus:outline-none font-mono" id="start-date" type="text" value="01/09/2024"/>
+<span class="text-outline mx-1 text-body-sm">-</span>
+<input class="w-24 text-on-surface font-body-md text-body-md bg-transparent focus:outline-none font-mono" id="end-date" type="text" value="28/09/2024"/>
+</div>
+</div>
+<!-- Preset Period Pills -->
+<div class="flex flex-col">
+<label class="font-label-xs text-label-xs text-secondary uppercase mb-1">Mốc chọn nhanh</label>
+<div class="flex items-center gap-1 bg-surface-container-low p-1 rounded-lg">
+<button class="filter-pill font-label-md text-label-md text-secondary hover:text-on-surface px-2.5 py-1 rounded transition-colors" data-days="7" type="button">7 ngày</button>
+<button class="filter-pill font-label-md text-label-md bg-card-bg text-primary font-semibold shadow-sm px-2.5 py-1 rounded transition-all" data-days="28" type="button">28 ngày (Mặc định)</button>
+<button class="filter-pill font-label-md text-label-md text-secondary hover:text-on-surface px-2.5 py-1 rounded transition-colors" data-days="month" type="button">Tháng này</button>
+<button class="filter-pill font-label-md text-label-md text-secondary hover:text-on-surface px-2.5 py-1 rounded transition-colors" data-days="last-month" type="button">Tháng trước</button>
+</div>
+</div>
+</div>
+<!-- Action & Comparison Group -->
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="flex items-center gap-2 bg-card-bg px-3 py-1.5 rounded-lg shadow-sm">
+<input checked="" class="w-4 h-4 text-primary rounded accent-primary cursor-pointer" id="compare-toggle" type="checkbox"/>
+<div class="flex flex-col">
+<label class="font-label-md text-label-md text-on-surface cursor-pointer select-none" for="compare-toggle">So sánh với kỳ trước</label>
+<span class="font-label-xs text-label-xs text-secondary font-mono">Kỳ so sánh: 04/08/2024 - 31/08/2024 (28 ngày)</span>
+</div>
+</div>
+<button class="inline-flex items-center gap-space-xs bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md px-space-md py-2.5 rounded-lg transition-colors" id="btn-apply-filters" type="button">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+<span>Xem báo cáo</span>
+</button>
+</div>
+</div>
+<!-- Inline Filter State Warning Bar (Hidden by default, shown when filters modify) -->
+<div class="hidden flex items-center justify-between bg-error-container/40 text-on-error-container px-space-md py-space-xs rounded-lg transition-all animate-pulse" id="filter-state-alert">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px] text-error">info</span>
+<span class="font-body-md text-body-md font-medium">Bộ lọc đã thay đổi — Vui lòng bấm "Xem báo cáo" để tính toán lại trước khi xuất Excel.</span>
+</div>
+<span class="font-label-xs text-label-xs uppercase font-bold tracking-wider bg-error/10 text-error px-2 py-0.5 rounded">Tạm khóa xuất Excel</span>
+</div>
+</div>
+<!-- DATA FRESHNESS & HEALTH STATUS BANNER -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col gap-space-sm">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs text-secondary font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[16px] text-status-fresh">cloud_done</span>
+<span>Khoảng dữ liệu đang hiển thị: <strong class="text-on-surface font-semibold">01/09/2024 - 28/09/2024</strong></span>
+<span class="text-outline">|</span>
+<span>Thời điểm đồng bộ: <strong class="text-on-surface">Hôm nay 09:15:32 (Asia/Ho_Chi_Minh)</strong></span>
+</div>
+<div class="flex items-center gap-space-2xs bg-surface px-2.5 py-1 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh animate-ping"></span>
+<span class="font-label-xs text-label-xs text-secondary uppercase font-semibold">Môi trường: Prototype Demo Data</span>
+</div>
+</div>
+<!-- Multi-source Latency and Health Matrix -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm pt-space-xs">
+<!-- GA4 Health -->
+<div class="bg-surface rounded-lg p-space-sm flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded bg-amber-100 flex items-center justify-center text-metric-ga4 shrink-0">
+<span class="material-symbols-outlined text-[18px]">query_stats</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Google Analytics 4</span>
+<span class="bg-amber-50 text-metric-ga4 font-label-xs text-label-xs px-1.5 py-0.2 rounded font-mono">ĐẦY ĐỦ</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary truncate">Khảo sát chuẩn đến 27/09/2024</p>
+<span class="font-label-xs text-label-xs text-outline mt-0.5">Ngày 28/09 đang xử lý streaming (dự kiến hoàn tất 02:00)</span>
+</div>
+</div>
+<!-- Search Console Health (Deliberate Latency Warning) -->
+<div class="bg-surface rounded-lg p-space-sm flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded bg-sky-100 flex items-center justify-center text-metric-gsc shrink-0">
+<span class="material-symbols-outlined text-[18px]">travel_explore</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Search Console (GSC)</span>
+<span class="bg-amber-100 text-amber-800 font-label-xs text-label-xs px-1.5 py-0.2 rounded font-semibold">TRỄ 2 NGÀY</span>
+</div>
+<p class="font-body-sm text-body-sm text-amber-900 font-medium truncate">Dữ liệu thực tế đến hết 26/09/2024</p>
+<span class="font-label-xs text-label-xs text-secondary mt-0.5">Quy tắc chuẩn: Không tạo dữ liệu ảo cho 27 và 28/09</span>
+</div>
+</div>
+<!-- Keyword Tracking Sheets Health -->
+<div class="bg-surface rounded-lg p-space-sm flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded bg-emerald-100 flex items-center justify-center text-metric-keywords shrink-0">
+<span class="material-symbols-outlined text-[18px]">table_chart</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md text-on-surface font-semibold">Keyword Ranking (Sheets)</span>
+<span class="bg-emerald-50 text-status-fresh font-label-xs text-label-xs px-1.5 py-0.2 rounded font-mono">TƯƠI MỚI</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary truncate">Khảo sát tự động lúc 06:00 sáng 28/09/2024</p>
+<span class="font-label-xs text-label-xs text-outline mt-0.5">Nguồn: Google Sheets Tab 'Ranking_Daily' (142 từ khóa)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- NAVIGATION TABS -->
+<div class="flex items-center gap-2 border-b border-border-subtle bg-card-bg px-space-md pt-space-xs rounded-xl shadow-sm">
+<button class="tab-btn px-space-md py-3 text-primary border-b-2 border-primary font-label-md text-label-md flex items-center gap-space-2xs transition-colors" data-tab="tab-overview" type="button">
+<span class="material-symbols-outlined text-[18px]">dashboard</span>
+<span>1. Báo cáo Tổng hợp (GA4 + GSC + Sheet)</span>
+<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px] font-bold">KẾT HỢP</span>
+</button>
+<button class="tab-btn px-space-md py-3 text-secondary hover:text-on-surface border-b-2 border-transparent font-label-md text-label-md flex items-center gap-space-2xs transition-colors" data-tab="tab-ga4" type="button">
+<span class="material-symbols-outlined text-[18px]">query_stats</span>
+<span>2. Google Analytics 4</span>
+</button>
+<button class="tab-btn px-space-md py-3 text-secondary hover:text-on-surface border-b-2 border-transparent font-label-md text-label-md flex items-center gap-space-2xs transition-colors" data-tab="tab-gsc" type="button">
+<span class="material-symbols-outlined text-[18px]">travel_explore</span>
+<span>3. Google Search Console</span>
+</button>
+<button class="tab-btn px-space-md py-3 text-secondary hover:text-on-surface border-b-2 border-transparent font-label-md text-label-md flex items-center gap-space-2xs transition-colors" data-tab="tab-keywords" type="button">
+<span class="material-symbols-outlined text-[18px]">checklist</span>
+<span>4. Keyword Tracking (Sheets)</span>
+</button>
+</div>
+<!-- MAIN TAB CONTENT: TỔNG HỢP -->
+<div class="flex flex-col space-y-space-lg" id="tab-overview-content">
+<!-- KPI ROW 1: GA4 GROUP -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs px-1">
+<span class="w-2.5 h-2.5 rounded-full bg-metric-ga4"></span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Chỉ số Hiệu năng Website (Google Analytics 4)</h2>
+<span class="text-secondary font-body-sm text-body-sm">(01/09 - 27/09)</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<!-- KPI 1 -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary">
+<span class="font-label-md text-label-md uppercase tracking-wide">Active Users (Người dùng)</span>
+<span class="material-symbols-outlined text-[18px]">group</span>
+</div>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">18,420</span>
+<span class="inline-flex items-center font-label-md text-label-md text-status-fresh bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] mr-0.5">trending_up</span>+12.4%
+            </span>
+</div>
+<div class="text-secondary font-body-sm text-body-sm">Kỳ trước: 16,388 users</div>
+</div>
+<!-- KPI 2 -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary">
+<span class="font-label-md text-label-md uppercase tracking-wide">Sessions (Phiên truy cập)</span>
+<span class="material-symbols-outlined text-[18px]">view_timeline</span>
+</div>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">24,850</span>
+<span class="inline-flex items-center font-label-md text-label-md text-status-fresh bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] mr-0.5">trending_up</span>+8.7%
+            </span>
+</div>
+<div class="text-secondary font-body-sm text-body-sm">Kỳ trước: 22,860 sessions</div>
+</div>
+<!-- KPI 3 -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary">
+<span class="font-label-md text-label-md uppercase tracking-wide">Pageviews (Lượt xem trang)</span>
+<span class="material-symbols-outlined text-[18px]">article</span>
+</div>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">68,310</span>
+<span class="inline-flex items-center font-label-md text-label-md text-status-fresh bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] mr-0.5">trending_up</span>+14.1%
+            </span>
+</div>
+<div class="text-secondary font-body-sm text-body-sm">Kỳ trước: 59,870 views</div>
+</div>
+<!-- KPI 4 -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<div class="flex items-center justify-between text-secondary">
+<span class="font-label-md text-label-md uppercase tracking-wide">Engagement Rate (Tương tác)</span>
+<span class="material-symbols-outlined text-[18px]">touch_app</span>
+</div>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">64.2%</span>
+<span class="inline-flex items-center font-label-md text-label-md text-status-fresh bg-emerald-50 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px] mr-0.5">trending_up</span>+3.1%
+            </span>
+</div>
+<div class="text-secondary font-body-sm text-body-sm">Kỳ trước: 62.3%</div>
+</div>
+</div>
+</div>
+<!-- KPI ROW 2: SEARCH CONSOLE & KEYWORDS -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
+<!-- Search Console Segment (8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center gap-space-xs">
+<span class="w-2.5 h-2.5 rounded-full bg-metric-gsc"></span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Chỉ số Tìm kiếm Tự nhiên (Google Search Console)</h2>
+</div>
+<span class="bg-amber-100 text-amber-900 font-label-xs text-label-xs px-2 py-0.5 rounded">Chốt đến 26/09 (Trễ 48h)</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase">Clicks Tìm kiếm</span>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">12,840</span>
+<span class="font-label-md text-label-md text-status-fresh bg-emerald-50 px-1.5 py-0.5 rounded">+15.2%</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Kỳ trước: 11,146</span>
+</div>
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase">Impressions (Lượt xem)</span>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">195.4K</span>
+<span class="font-label-md text-label-md text-status-fresh bg-emerald-50 px-1.5 py-0.5 rounded">+9.8%</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Kỳ trước: 177.9K</span>
+</div>
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase">CTR Trung bình</span>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">6.57%</span>
+<span class="font-label-md text-label-md text-status-fresh bg-emerald-50 px-1.5 py-0.5 rounded">+0.3%</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Kỳ trước: 6.27%</span>
+</div>
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase">Vị trí trung bình</span>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">14.2</span>
+<span class="font-label-md text-label-md text-status-fresh bg-emerald-50 px-1.5 py-0.5 rounded">↑ 1.8</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Kỳ trước: 16.0</span>
+</div>
+</div>
+</div>
+<!-- Keyword Tracking Segment (4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs px-1">
+<span class="w-2.5 h-2.5 rounded-full bg-metric-keywords"></span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Theo dõi Từ khóa (Sheet)</h2>
+</div>
+<div class="grid grid-cols-2 gap-space-md h-full">
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase">Top 10 Google</span>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-primary">38</span>
+<span class="font-label-md text-label-md text-status-fresh bg-emerald-50 px-1.5 py-0.5 rounded">+4 từ</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Top 3: <strong>12</strong> từ khóa</span>
+</div>
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<span class="font-label-md text-label-md text-secondary uppercase">Tổng danh mục</span>
+<div class="my-space-xs flex items-baseline justify-between">
+<span class="font-data-metric text-data-metric text-on-surface">142</span>
+<span class="font-label-xs text-label-xs text-secondary bg-surface px-1.5 py-0.5 rounded">Ranked</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Tỷ lệ trong Top 10: <strong>26.7%</strong></span>
+</div>
+</div>
+</div>
+</div>
+<!-- TREND VISUALIZATION: CROSS-SOURCE TIMELINE -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-lg flex flex-col gap-space-md">
+<div class="flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex flex-col">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Biểu đồ Xu hướng Tháng 09/2024</h3>
+<p class="font-body-sm text-body-sm text-secondary">So sánh phiên GA4 vs Clicks GSC. Đường nét đứt biểu thị vùng trễ dữ liệu từ Google Search Console.</p>
+</div>
+<div class="flex items-center gap-space-md text-body-sm">
+<div class="flex items-center gap-1.5">
+<span class="w-3.5 h-1.5 bg-metric-ga4 rounded-full"></span>
+<span class="font-medium text-on-surface">Sessions (GA4)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3.5 h-1.5 bg-metric-gsc rounded-full"></span>
+<span class="font-medium text-on-surface">Clicks (Search Console)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-3.5 h-0.5 border-t-2 border-dashed border-metric-gsc"></span>
+<span class="text-secondary italic">Khoảng trễ GSC (27-28/09)</span>
+</div>
+</div>
+</div>
+<!-- Trendline Vector Canvas -->
+<div class="w-full h-64 bg-surface rounded-lg p-space-md relative overflow-hidden flex flex-col justify-between">
+<!-- SVG Graphic Rendering Timeline -->
+<svg class="w-full h-full" fill="none" preserveaspectratio="none" viewbox="0 0 1000 240">
+<!-- Horizontal Grid Lines -->
+<line stroke="#E2E8F0" stroke-dasharray="4 4" x1="0" x2="1000" y1="40" y2="40"></line>
+<line stroke="#E2E8F0" stroke-dasharray="4 4" x1="0" x2="1000" y1="100" y2="100"></line>
+<line stroke="#E2E8F0" stroke-dasharray="4 4" x1="0" x2="1000" y1="160" y2="160"></line>
+<line stroke="#CBD5E1" stroke-width="1.5" x1="0" x2="1000" y1="210" y2="210"></line>
+<!-- Shaded Warning Box for GSC Delays (Days 27 & 28) -->
+<rect fill="#FEF3C7" fill-opacity="0.35" height="190" rx="4" width="90" x="910" y="20"></rect>
+<text fill="#B45309" font-family="Inter" font-size="10" font-weight="600" x="915" y="35">VÙNG TRỄ GSC</text>
+<!-- GA4 Line (Continuous through 27th, dipping towards ongoing 28th) -->
+<path d="M 20 170 Q 70 150, 120 145 T 220 130 T 320 155 T 420 110 T 520 125 T 620 95 T 720 105 T 820 80 T 910 88 T 970 120" fill="none" stroke="#F59E0B" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- GSC Clicks Line (Solid until 26th at x=910, then dashed to indicate pending sync) -->
+<path d="M 20 195 Q 70 185, 120 175 T 220 168 T 320 180 T 420 150 T 520 160 T 620 135 T 720 142 T 820 125 T 910 130" fill="none" stroke="#0284C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Dashed Projection / Pending status for GSC -->
+<path d="M 910 130 L 970 130" fill="none" stroke="#0284C7" stroke-dasharray="4 4" stroke-opacity="0.6" stroke-width="2.5"></path>
+<!-- Active Dots on Day 26 -->
+<circle class="hover:scale-125 transition-transform" cx="910" cy="88" fill="#F59E0B" r="4.5"></circle>
+<circle class="hover:scale-125 transition-transform" cx="910" cy="130" fill="#0284C7" r="4.5"></circle>
+</svg>
+<!-- Timeline X-Axis Labels -->
+<div class="flex justify-between items-center text-[11px] font-mono text-secondary px-2 pt-1 border-t border-border-subtle">
+<span>01/09</span>
+<span>05/09</span>
+<span>09/09</span>
+<span>13/09</span>
+<span>17/09</span>
+<span>21/09</span>
+<span>25/09</span>
+<span class="font-bold text-on-surface">26/09 (Chốt GSC)</span>
+<span class="text-amber-800 font-semibold">27/09</span>
+<span class="text-outline">28/09 (Hôm nay)</span>
+</div>
+</div>
+</div>
+<!-- DUAL DATA TABLES (SIDE-BY-SIDE SUMMARY) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
+<!-- Table 1: Top Landing Pages (GA4) -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-metric-ga4">web</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Top Landing Pages (GA4)</h3>
+</div>
+<span class="text-secondary font-label-xs text-label-xs uppercase">Sắp xếp: Sessions</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-data-table text-data-table">
+<thead class="bg-surface font-label-md text-label-md text-secondary uppercase">
+<tr>
+<th class="py-2.5 px-3">Trang đích</th>
+<th class="py-2.5 px-3 text-right">Sessions</th>
+<th class="py-2.5 px-3 text-right">Users</th>
+<th class="py-2.5 px-3 text-right">Tương tác</th>
+</tr>
+</thead>
+<tbody class="text-on-surface divide-y divide-border-subtle">
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-primary flex items-center gap-1.5 truncate max-w-xs">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                    /dich-vu-kham-nhi
+                  </td>
+<td class="py-2.5 px-3 text-right font-mono font-medium">8,420</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">6,190</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh font-medium">72.4%</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-primary flex items-center gap-1.5 truncate max-w-xs">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                    /bang-gia-tiem-chung
+                  </td>
+<td class="py-2.5 px-3 text-right font-mono font-medium">5,110</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">4,020</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh font-medium">68.1%</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-primary flex items-center gap-1.5 truncate max-w-xs">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                    /kham-dinh-duong
+                  </td>
+<td class="py-2.5 px-3 text-right font-mono font-medium">3,980</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">2,840</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh font-medium">61.5%</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-primary flex items-center gap-1.5 truncate max-w-xs">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                    /bac-si-chuyen-khoa
+                  </td>
+<td class="py-2.5 px-3 text-right font-mono font-medium">2,740</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">2,110</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh font-medium">59.8%</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-primary flex items-center gap-1.5 truncate max-w-xs">
+<span class="material-symbols-outlined text-[14px]">link</span>
+                    /dat-lich-kham-nhanh
+                  </td>
+<td class="py-2.5 px-3 text-right font-mono font-medium">1,890</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">1,450</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh font-medium">78.2%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="pt-space-xs mt-space-xs flex justify-between items-center text-secondary font-body-sm text-body-sm border-t border-border-subtle">
+<span>Hiển thị 5/142 trang</span>
+<a class="text-primary hover:underline font-label-md text-label-md inline-flex items-center gap-0.5" href="#">
+            Xem toàn bộ GA4 <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Table 2: Top Search Queries (Google Search Console) -->
+<div class="bg-card-bg rounded-xl shadow-sm p-space-md flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-metric-gsc">saved_search</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Top Từ khóa Tìm kiếm (Search Console)</h3>
+</div>
+<span class="text-secondary font-label-xs text-label-xs uppercase">Sắp xếp: Clicks</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-data-table text-data-table">
+<thead class="bg-surface font-label-md text-label-md text-secondary uppercase">
+<tr>
+<th class="py-2.5 px-3">Từ khóa (Query)</th>
+<th class="py-2.5 px-3 text-right">Clicks</th>
+<th class="py-2.5 px-3 text-right">Impr.</th>
+<th class="py-2.5 px-3 text-right">CTR</th>
+<th class="py-2.5 px-3 text-right">Vị trí</th>
+</tr>
+</thead>
+<tbody class="text-on-surface divide-y divide-border-subtle">
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface">phòng khám nhi uy tín</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-primary">1,620</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">18,400</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh">8.8%</td>
+<td class="py-2.5 px-3 text-right font-mono font-bold text-on-surface">2.4</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface">bác sĩ dinh dưỡng nhi tphcm</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-primary">1,240</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">14,200</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh">8.7%</td>
+<td class="py-2.5 px-3 text-right font-mono font-bold text-on-surface">3.1</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface">tiêm chủng cho trẻ sơ sinh</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-primary">980</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">19,800</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">4.9%</td>
+<td class="py-2.5 px-3 text-right font-mono font-bold text-on-surface">5.8</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface">kinderhealth nguyễn thị thập</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-primary">870</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">1,940</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh">44.8%</td>
+<td class="py-2.5 px-3 text-right font-mono font-bold text-on-surface">1.0</td>
+</tr>
+<tr class="hover:bg-surface transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface">khám tai mũi họng nhi quận 7</td>
+<td class="py-2.5 px-3 text-right font-mono font-medium text-primary">640</td>
+<td class="py-2.5 px-3 text-right font-mono text-secondary">8,100</td>
+<td class="py-2.5 px-3 text-right font-mono text-status-fresh">7.9%</td>
+<td class="py-2.5 px-3 text-right font-mono font-bold text-on-surface">4.2</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Privacy & Sampling Regulatory Notice -->
+<div class="pt-space-xs mt-space-xs flex items-center justify-between border-t border-border-subtle">
+<p class="font-body-sm text-[11px] text-secondary italic">
+<span class="font-semibold text-outline">Lưu ý:</span> Tổng các hàng truy vấn có thể thấp hơn tổng clicks trên KPI do chính sách bảo vệ quyền riêng tư &amp; cơ chế lấy mẫu của Google Search Console.
+          </p>
+</div>
+</div>
+</div>
+<!-- AUDIT FOOTER & COMPLIANCE METADATA -->
+<div class="bg-surface rounded-xl p-space-md flex flex-wrap items-center justify-between gap-space-sm text-secondary font-body-sm text-body-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[18px] text-primary">verified_user</span>
+<span>Dữ liệu tuân thủ quy chuẩn bảo mật y tế HIPAA &amp; Nghị định 13/2023/NĐ-CP về Bảo vệ dữ liệu cá nhân.</span>
+</div>
+<div class="flex items-center gap-space-md">
+<span>KDH-Engine: v2.4-build88</span>
+<button class="text-primary hover:underline font-label-md text-label-md" type="button">Xem nhật ký đồng bộ</button>
+</div>
+</div>
+</div>
+<!-- FLOATING MODAL: CONFIRM EXCEL EXPORT WORKFLOW -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-sidebar-surface/60 backdrop-blur-xs p-space-md hidden" id="export-modal">
+<div class="bg-card-bg w-full max-w-xl rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+<!-- Modal Header -->
+<div class="bg-surface px-space-lg py-space-md flex items-center justify-between border-b border-border-subtle">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">table_view</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Xác nhận xuất Báo cáo Excel</h3>
+<span class="font-mono text-label-xs text-primary font-semibold">KinderHealth_Report_2024-09-01_2024-09-28.xlsx</span>
+</div>
+</div>
+<button class="text-secondary hover:text-on-surface p-1 rounded-md transition-colors" id="btn-export-close" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Modal Body -->
+<div class="p-space-lg space-y-space-md">
+<!-- Export Summary Metadata -->
+<div class="grid grid-cols-2 gap-space-sm bg-surface rounded-lg p-space-sm text-body-sm">
+<div>
+<span class="text-secondary font-label-xs text-label-xs uppercase">Múi giờ chuẩn:</span>
+<p class="font-semibold text-on-surface font-mono">Asia/Ho_Chi_Minh (UTC+7)</p>
+</div>
+<div>
+<span class="text-secondary font-label-xs text-label-xs uppercase">Tài khoản kết xuất:</span>
+<p class="font-semibold text-on-surface">BS. Minh Anh (Admin)</p>
+</div>
+<div>
+<span class="text-secondary font-label-xs text-label-xs uppercase">Thời điểm xuất:</span>
+<p class="font-semibold text-on-surface font-mono">28/09/2024 09:45:10</p>
+</div>
+<div>
+<span class="text-secondary font-label-xs text-label-xs uppercase">Định dạng nén:</span>
+<p class="font-semibold text-on-surface font-mono">Office Open XML (.xlsx)</p>
+</div>
+</div>
+<!-- Included Sheets Architecture -->
+<div>
+<label class="font-label-md text-label-md text-on-surface font-semibold mb-2 block">
+            Cấu trúc danh sách Sheet trong file xuất (5 tabs):
+          </label>
+<div class="space-y-1.5 bg-surface-container-low p-2 rounded-lg">
+<div class="flex items-center justify-between bg-card-bg p-2 rounded text-body-sm shadow-xs">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded bg-primary/10 text-primary font-mono text-[11px] flex items-center justify-center font-bold">1</span>
+<span class="font-mono font-medium text-on-surface">Tong_quan</span>
+</div>
+<span class="text-secondary text-body-sm text-[11px]">Bảng KPI hợp nhất, Metadata, Audit Sync Dates</span>
+</div>
+<div class="flex items-center justify-between bg-card-bg p-2 rounded text-body-sm shadow-xs">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded bg-amber-100 text-amber-800 font-mono text-[11px] flex items-center justify-center font-bold">2</span>
+<span class="font-mono font-medium text-on-surface">GA4_theo_ngay</span>
+</div>
+<span class="text-secondary text-body-sm text-[11px]">Ngày, Users, Sessions, Views, Engagement</span>
+</div>
+<div class="flex items-center justify-between bg-card-bg p-2 rounded text-body-sm shadow-xs">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded bg-sky-100 text-sky-800 font-mono text-[11px] flex items-center justify-center font-bold">3</span>
+<span class="font-mono font-medium text-on-surface">GSC_theo_ngay</span>
+</div>
+<span class="text-secondary text-body-sm text-[11px]">Ngày, Clicks, Impressions, CTR, Position</span>
+</div>
+<div class="flex items-center justify-between bg-card-bg p-2 rounded text-body-sm shadow-xs">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded bg-sky-100 text-sky-800 font-mono text-[11px] flex items-center justify-center font-bold">4</span>
+<span class="font-mono font-medium text-on-surface">GSC_truy_van</span>
+</div>
+<span class="text-secondary text-body-sm text-[11px]">Query, Clicks, Impressions, CTR, Vị trí</span>
+</div>
+<div class="flex items-center justify-between bg-card-bg p-2 rounded text-body-sm shadow-xs">
+<div class="flex items-center gap-2">
+<span class="w-5 h-5 rounded bg-emerald-100 text-emerald-800 font-mono text-[11px] flex items-center justify-center font-bold">5</span>
+<span class="font-mono font-medium text-on-surface">Keyword_tracking</span>
+</div>
+<span class="text-secondary text-body-sm text-[11px]">Keyword, Rank, Target URL, Tracking Date</span>
+</div>
+</div>
+</div>
+<!-- Pre-flight Source Readiness Check -->
+<div class="flex items-center justify-between bg-emerald-50 text-status-fresh p-3 rounded-lg border border-status-fresh/30">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+<span class="font-label-md text-label-md font-semibold">Tất cả 3 nguồn dữ liệu bắt buộc đều SẴN SÀNG</span>
+</div>
+<span class="font-mono text-label-xs text-label-xs bg-status-fresh/20 px-2 py-0.5 rounded uppercase font-bold">OK (3/3)</span>
+</div>
+</div>
+<!-- Modal Actions -->
+<div class="bg-surface px-space-lg py-space-md flex items-center justify-end gap-space-sm border-t border-border-subtle">
+<button class="bg-card-bg hover:bg-surface text-on-surface font-label-md text-label-md px-space-md py-2.5 rounded-lg border border-border-strong transition-colors" id="btn-modal-cancel" type="button">
+          Hủy bỏ
+        </button>
+<button class="inline-flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md px-space-lg py-2.5 rounded-lg shadow-sm transition-transform active:scale-95" id="btn-modal-download" type="button">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+<span>Bắt đầu tải xuống file (.xlsx)</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Filter pill interaction
+  const pills = document.querySelectorAll('.filter-pill');
+  const alertBar = document.getElementById('filter-state-alert');
+  const btnApply = document.getElementById('btn-apply-filters');
+  const btnExport = document.getElementById('btn-export-open');
+
+  pills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      pills.forEach(p => {
+        p.classList.remove('bg-card-bg', 'text-primary', 'font-semibold', 'shadow-sm');
+        p.classList.add('text-secondary');
+      });
+      pill.classList.remove('text-secondary');
+      pill.classList.add('bg-card-bg', 'text-primary', 'font-semibold', 'shadow-sm');
+
+      // Trigger modified filter warning state
+      if (alertBar) {
+        alertBar.classList.remove('hidden');
+      }
+      if (btnExport) {
+        btnExport.classList.add('opacity-50', 'pointer-events-none');
+      }
+    });
+  });
+
+  // Re-apply filters button click
+  if (btnApply) {
+    btnApply.addEventListener('click', () => {
+      if (alertBar) {
+        alertBar.classList.add('hidden');
+      }
+      if (btnExport) {
+        btnExport.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    });
+  }
+
+  // Export Modal Management
+  const exportModal = document.getElementById('export-modal');
+  const btnExportOpen = document.getElementById('btn-export-open');
+  const btnExportClose = document.getElementById('btn-export-close');
+  const btnModalCancel = document.getElementById('btn-modal-cancel');
+  const btnModalDownload = document.getElementById('btn-modal-download');
+
+  if (btnExportOpen && exportModal) {
+    btnExportOpen.addEventListener('click', () => {
+      exportModal.classList.remove('hidden');
+    });
+  }
+
+  function closeModal() {
+    if (exportModal) {
+      exportModal.classList.add('hidden');
+    }
+  }
+
+  if (btnExportClose) btnExportClose.addEventListener('click', closeModal);
+  if (btnModalCancel) btnModalCancel.addEventListener('click', closeModal);
+
+  if (btnModalDownload) {
+    btnModalDownload.addEventListener('click', () => {
+      const originalText = btnModalDownload.innerHTML;
+      btnModalDownload.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span> Đang kết xuất 5 sheet...';
+      btnModalDownload.classList.add('pointer-events-none', 'opacity-80');
+      
+      setTimeout(() => {
+        btnModalDownload.innerHTML = '<span class="material-symbols-outlined text-[18px]">done</span> Tải hoàn tất!';
+        setTimeout(() => {
+          closeModal();
+          btnModalDownload.innerHTML = originalText;
+          btnModalDownload.classList.remove('pointer-events-none', 'opacity-80');
+        }, 800);
+      }, 1200);
+    });
+  }
+
+  // Tab switching UI feedback
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => {
+        b.classList.remove('text-primary', 'border-primary');
+        b.classList.add('text-secondary', 'border-transparent');
+      });
+      btn.classList.add('text-primary', 'border-primary');
+      btn.classList.remove('text-secondary', 'border-transparent');
+    });
+  });
+</script></main></div></body></html>

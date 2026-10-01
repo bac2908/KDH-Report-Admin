@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"sidebar-surface":"#0F172A","error-container":"#ffdad6","on-tertiary-container":"#fcfcff","on-tertiary":"#ffffff","surface-container-lowest":"#ffffff","metric-gsc":"#0284C7","primary-fixed":"#89f5e7","on-surface":"#0b1c30","on-primary-container":"#f4fffc","inverse-primary":"#6bd8cb","surface":"#f8f9ff","outline-variant":"#bcc9c6","surface-bright":"#f8f9ff","border-strong":"#CBD5E1","outline":"#6d7a77","on-tertiary-fixed":"#001e2d","surface-tint":"#006a61","secondary-fixed-dim":"#bec6e0","primary":"#00685f","secondary-container":"#dae2fd","status-fresh":"#14B8A6","tertiary-fixed":"#c6e7ff","status-stale":"#EF4444","surface-container-high":"#dce9ff","on-primary":"#ffffff","metric-keywords":"#10B981","sidebar-elevated":"#1E293B","on-background":"#0b1c30","tertiary":"#00638a","primary-fixed-dim":"#6bd8cb","on-surface-variant":"#3d4947","surface-variant":"#d3e4fe","surface-container-highest":"#d3e4fe","slate-bg":"#F8FAFC","brand-magenta":"#E91E63","background":"#f8f9ff","secondary":"#565e74","on-secondary-container":"#5c647a","card-bg":"#FFFFFF","surface-container":"#e5eeff","on-primary-fixed-variant":"#005049","on-error-container":"#93000a","surface-dim":"#cbdbf5","tertiary-container":"#007dad","tertiary-fixed-dim":"#82cfff","primary-container":"#008378","on-secondary":"#ffffff","on-error":"#ffffff","border-subtle":"#E2E8F0","metric-ga4":"#F59E0B","inverse-on-surface":"#eaf1ff","on-secondary-fixed":"#131b2e","on-secondary-fixed-variant":"#3f465c","on-primary-fixed":"#00201d","inverse-surface":"#213145","error":"#ba1a1a","secondary-fixed":"#dae2fd","on-tertiary-fixed-variant":"#004c6b","surface-container-low":"#eff4ff","brand-rose":"#FF6FA5"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"space-2xs":"0.25rem","gutter-desktop":"1.5rem","space-md":"1rem","gutter":"1.25rem","space-xs":"0.5rem","space-2xl":"3rem","space-sm":"0.75rem","margin-desktop":"2rem","space-lg":"1.5rem","margin":"1rem","space-xl":"2rem"},"fontFamily":{"headline-lg":["Inter"],"body-sm":["Inter"],"label-md":["Inter"],"data-table":["Inter"],"headline-sm":["Inter"],"headline-xl":["Inter"],"headline-md":["Inter"],"label-xs":["Inter"],"body-md":["Inter"],"body-lg":["Inter"],"data-metric":["Inter"]},"fontSize":{"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"data-table":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-sm":["16px",{"lineHeight":"24px","fontWeight":"600"}],"headline-xl":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"700"}],"headline-md":["20px",{"lineHeight":"28px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-xs":["10px",{"lineHeight":"12px","letterSpacing":"0.04em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"24px","fontWeight":"400"}],"data-metric":["28px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"700"}]}}}}</script></head><body class="bg-slate-bg font-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-screen w-64 bg-sidebar-surface z-50 flex flex-col justify-between border-r border-sidebar-elevated"><div class="flex flex-col flex-1 overflow-y-auto"><div class="h-16 flex items-center gap-space-sm px-space-md border-b border-sidebar-elevated bg-sidebar-surface"><img alt="KinderHealth Report Admin Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W0zKmem6WlX5NnFKkU89v4hdV1YlJTjcUqAbTQerQ41K3tj_otofa00e5lEulx1_x30rfRJ0N0_PeHG0XlDqqiJQqwgl-vlC_Bj2U1EvuSXP0-eWWRtrwjZHZQ9ApxZgbnF4CT9WaC3oVmMcvYevuAe2ZKbVJ9F79Xo3gchoZ-GTRFFn4YHMumYMxE3vgwCiL6Z3mO0u3ZH-jb0fjS_-2X5C1zGP8IdgM8kQu_3AveT1xautkqkxMTCvgc"/><div class="flex flex-col"><span class="text-white font-headline-sm text-sm tracking-tight leading-none">KinderHealth</span><span class="text-outline text-label-xs uppercase mt-space-2xs tracking-wider">Report Admin</span></div></div><div class="px-space-md py-space-sm"><div class="text-label-xs text-outline uppercase font-semibold px-space-xs mb-space-xs">Báo cáo Marketing</div><nav class="space-y-space-2xs" data-active-classes="bg-sidebar-elevated text-primary-fixed border-l-2 border-primary font-semibold"><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="tong-quan" href="#"><span class="material-symbols-outlined text-[18px]">dashboard</span><span class="font-body-md text-data-table">Tổng quan</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="phan-tich-xuat-excel" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">analytics</span><span class="font-body-md text-data-table">Phân tích &amp; Xuất Excel</span></div><span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded">CORE</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="bao-cao-da-luu" href="#"><span class="material-symbols-outlined text-[18px]">bookmark</span><span class="font-body-md text-data-table">Báo cáo đã lưu</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="ket-noi-google" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-body-md text-data-table">Kết nối Google</span></div><span class="bg-sidebar-elevated text-status-fresh border border-status-fresh/30 text-[9px] font-bold px-1 py-0.5 rounded uppercase">ADMIN</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="lich-su-hoat-dong" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-body-md text-data-table">Lịch sử hoạt động</span></a></nav></div><div class="px-space-md py-space-xs"><div class="text-label-xs text-outline uppercase font-semibold px-space-xs mb-space-xs flex items-center justify-between"><span>Vận hành</span><span class="material-symbols-outlined text-outline text-[16px]">expand_more</span></div><nav class="space-y-space-2xs" data-active-classes="bg-sidebar-elevated text-primary-fixed border-l-2 border-primary font-semibold"><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="du-lieu-dau-vao" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-body-md text-data-table">Dữ liệu đầu vào</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="lich-tu-dong" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-body-md text-data-table">Lịch tự động</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="nguoi-dung" href="#"><span class="material-symbols-outlined text-[18px]">group</span><span class="font-body-md text-data-table">Người dùng</span></a><a class="flex items-center gap-space-sm px-space-sm py-space-xs rounded text-outline-variant hover:bg-sidebar-elevated hover:text-white transition-colors" data-path="cai-dat" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-body-md text-data-table">Cài đặt</span></a></nav></div></div><div class="p-space-md border-t border-sidebar-elevated bg-sidebar-surface/90"><div class="bg-sidebar-elevated/80 border border-slate-700/60 rounded p-space-xs mb-space-xs"><div class="flex items-center gap-1.5 mb-1"><span class="w-2 h-2 rounded-full bg-status-fresh animate-pulse"></span><span class="text-[11px] text-white font-medium">Google Sẵn sàng</span></div><p class="text-[10px] text-outline truncate">marketing@kinderhealth.vn</p></div><div class="flex items-center justify-between text-[11px] text-outline px-space-2xs"><span>Hệ thống KDH</span><span class="font-mono">v1.2.0</span></div></div></aside><div class="pl-64 flex flex-col min-h-screen"><header class="fixed top-0 left-64 right-0 h-16 bg-card-bg border-b border-border-subtle z-40 flex items-center justify-between px-space-lg"><div class="flex items-center gap-space-sm"><img alt="KinderHealth Report Admin Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1W0zKmem6WlX5NnFKkU89v4hdV1YlJTjcUqAbTQerQ41K3tj_otofa00e5lEulx1_x30rfRJ0N0_PeHG0XlDqqiJQqwgl-vlC_Bj2U1EvuSXP0-eWWRtrwjZHZQ9ApxZgbnF4CT9WaC3oVmMcvYevuAe2ZKbVJ9F79Xo3gchoZ-GTRFFn4YHMumYMxE3vgwCiL6Z3mO0u3ZH-jb0fjS_-2X5C1zGP8IdgM8kQu_3AveT1xautkqkxMTCvgc"/><div class="h-4 w-px bg-border-subtle mx-space-2xs"></div><div class="flex items-center gap-space-2xs text-body-sm text-secondary"><span class="font-medium text-on-surface-variant">KinderHealth</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="font-semibold text-primary">Trung tâm Báo cáo</span></div></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs bg-emerald-50 text-status-fresh border border-status-fresh/20 px-space-sm py-1 rounded text-label-xs font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span><span>3/3 nguồn dữ liệu ổn định (GA4, GSC, GMB)</span></div><button class="inline-flex items-center gap-space-2xs bg-surface-container-low hover:bg-surface-container text-on-surface border border-border-strong text-body-sm font-medium px-space-sm py-1.5 rounded transition-colors" type="button"><span class="material-symbols-outlined text-[16px] text-primary">open_in_new</span><span class="font-label-md text-label-md">Mở dashboard hiện tại</span></button><div class="relative"><button class="p-1.5 rounded hover:bg-slate-bg text-secondary hover:text-on-surface transition-colors flex items-center justify-center" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-brand-magenta"></span></button></div><div class="h-6 w-px bg-border-subtle"></div><div class="flex items-center gap-space-sm pl-space-2xs cursor-pointer"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div><div class="hidden md:flex flex-col text-left"><span class="text-body-sm font-semibold text-on-surface leading-tight">BS. Minh Anh</span><span class="text-[11px] text-secondary leading-tight">Admin / Quản trị</span></div><span class="material-symbols-outlined text-secondary text-[16px]">arrow_drop_down</span></div></div></header><main class="w-full pt-16 bg-slate-bg min-h-screen px-gutter-desktop py-space-lg"><div class="flex flex-col w-full space-y-space-lg">
+<!-- Top Hero Status Banner & Breadcrumb Context -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+<div class="space-y-space-2xs">
+<div class="flex items-center gap-space-2xs text-secondary font-label-md text-label-md">
+<span>BÁO CÁO MARKETING</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-semibold">BÁO CÁO ĐÃ LƯU</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface">Báo cáo đã lưu</h1>
+<p class="font-body-md text-body-md text-secondary">Kho lưu trữ và truy cập các báo cáo định kỳ marketing phòng khám đã được tạo và xuất bản</p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<button class="inline-flex items-center gap-space-xs bg-card-bg hover:bg-slate-bg text-secondary hover:text-on-surface px-space-md py-space-sm rounded-lg shadow-sm transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">download_for_offline</span>
+<span class="font-label-md text-label-md">Xuất danh mục (CSV)</span>
+</button>
+<button class="inline-flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-md py-space-sm rounded-lg shadow-md hover:shadow transition-all group" onclick="openCreateModal()" type="button">
+<span class="material-symbols-outlined text-[18px] group-hover:rotate-90 transition-transform">add_circle</span>
+<span class="font-label-md text-label-md">Tạo báo cáo mới từ phân tích</span>
+</button>
+</div>
+</div>
+<!-- Operational Clinical Policy Note (Business Governance Banner) -->
+<div class="bg-card-bg rounded-xl p-space-md shadow-sm relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md">
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-tertiary"></div>
+<div class="flex items-start gap-space-sm pl-space-xs">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-tertiary shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]">lock_clock</span>
+</div>
+<div class="space-y-0.5">
+<div class="flex items-center gap-space-2xs flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface">Quy chuẩn dữ liệu đóng băng (Frozen Snapshot Policy)</span>
+<span class="bg-surface-container text-tertiary px-space-2xs py-0.5 rounded text-label-xs font-label-xs uppercase">Bảo toàn chứng từ</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">
+          Báo cáo đã lưu là các bản ghi cố định (Static Frozen Snapshot) tại thời điểm tạo, không tự ý sửa số liệu KPI và không đồng nhất với dữ liệu Live API vừa truy vấn.
+          Các nguồn dữ liệu Facebook Ads, TikTok Ads và Google Business Profile là các tập tin nhập liệu độc lập, không cấu hình qua kết nối Google OAuth của hệ sinh thái.
+        </p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0 self-end md:self-center">
+<span class="font-label-xs text-label-xs text-secondary bg-surface-container-low px-space-sm py-1.5 rounded-full flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-status-fresh"></span>
+        7 Báo cáo khả dụng
+      </span>
+</div>
+</div>
+<!-- Filter & Fast Action Workbench -->
+<div class="bg-card-bg rounded-xl p-space-md shadow-sm space-y-space-md">
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+<!-- Search Input -->
+<div class="relative flex-1 max-w-lg">
+<span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
+<input class="w-full pl-10 pr-space-md py-2.5 bg-slate-bg rounded-lg text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-white shadow-inner transition-all" id="reportSearchInput" onkeyup="filterReports()" placeholder="Tìm theo tên báo cáo, chiến dịch hoặc người xuất bản..." type="text"/>
+</div>
+<!-- Quick Date Segmented Bar -->
+<div class="flex items-center bg-slate-bg p-1 rounded-lg gap-1 overflow-x-auto">
+<button class="period-btn px-space-sm py-1.5 rounded-md font-label-md text-label-md bg-card-bg text-primary shadow-sm transition-colors" onclick="setPeriodFilter('all', this)" type="button">Tất cả chu kỳ</button>
+<button class="period-btn px-space-sm py-1.5 rounded-md font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" onclick="setPeriodFilter('7days', this)" type="button">7 Ngày</button>
+<button class="period-btn px-space-sm py-1.5 rounded-md font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" onclick="setPeriodFilter('30days', this)" type="button">30 Ngày / Tháng</button>
+<button class="period-btn px-space-sm py-1.5 rounded-md font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" onclick="setPeriodFilter('6months', this)" type="button">6 Tháng (H1/H2)</button>
+<button class="period-btn px-space-sm py-1.5 rounded-md font-label-md text-label-md text-secondary hover:text-on-surface transition-colors" onclick="setPeriodFilter('quarter', this)" type="button">Theo Quý</button>
+</div>
+</div>
+<!-- Filter Channel Tags -->
+<div class="flex items-center justify-between flex-wrap gap-space-sm pt-space-xs">
+<div class="flex items-center gap-space-xs flex-wrap">
+<span class="font-label-xs text-label-xs uppercase text-secondary mr-space-2xs tracking-wider">Kênh &amp; Nguồn:</span>
+<button class="source-chip px-space-sm py-1 rounded-full font-label-md text-label-md bg-primary text-on-primary transition-all" onclick="setSourceFilter('all', this)" type="button">Tất cả (7)</button>
+<button class="source-chip px-space-sm py-1 rounded-full font-label-md text-label-md bg-slate-bg text-secondary hover:bg-surface-container transition-all flex items-center gap-1.5" onclick="setSourceFilter('facebook', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span> Facebook (4)
+        </button>
+<button class="source-chip px-space-sm py-1 rounded-full font-label-md text-label-md bg-slate-bg text-secondary hover:bg-surface-container transition-all flex items-center gap-1.5" onclick="setSourceFilter('tiktok', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-black"></span> TikTok (1)
+        </button>
+<button class="source-chip px-space-sm py-1 rounded-full font-label-md text-label-md bg-slate-bg text-secondary hover:bg-surface-container transition-all flex items-center gap-1.5" onclick="setSourceFilter('website', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-metric-gsc"></span> SEO &amp; Website (1)
+        </button>
+<button class="source-chip px-space-sm py-1 rounded-full font-label-md text-label-md bg-slate-bg text-secondary hover:bg-surface-container transition-all flex items-center gap-1.5" onclick="setSourceFilter('gmb', this)" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-metric-ga4"></span> Google Maps / GBP (1)
+        </button>
+</div>
+<div class="flex items-center gap-space-xs text-secondary font-body-sm text-body-sm">
+<span>Hiển thị: <strong class="text-on-surface font-semibold" id="displayedCount">7</strong> / 7 báo cáo</span>
+</div>
+</div>
+</div>
+<!-- Primary Saved Reports Repository Table -->
+<div class="bg-card-bg rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse" id="reportsTable">
+<thead>
+<tr class="bg-slate-bg font-label-xs text-label-xs uppercase text-secondary tracking-wider">
+<th class="py-3 px-space-md w-12 text-center">STT</th>
+<th class="py-3 px-space-md">Tên Báo Cáo &amp; Chiến Dịch</th>
+<th class="py-3 px-space-md">Chu Kỳ Báo Cáo</th>
+<th class="py-3 px-space-md">Nguồn Dữ Liệu</th>
+<th class="py-3 px-space-md">Trạng Thái &amp; Phiên Bản</th>
+<th class="py-3 px-space-md">Ngày Cập Nhật</th>
+<th class="py-3 px-space-md text-right pr-space-lg">Thao Tác Nghiệp Vụ</th>
+</tr>
+</thead>
+<tbody class="font-data-table text-data-table divide-y-0 text-on-surface">
+<!-- Row 1: Website Traffic & SEO Analytics -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="30days" data-source="website" data-title="Website Traffic &amp; SEO Analytics">
+<td class="py-3 px-space-md text-center text-secondary font-medium">01</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">Website Traffic &amp; SEO Analytics</span>
+<span class="material-symbols-outlined text-primary text-[16px]">verified</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Phân tích chuyển đổi organic traffic, từ khóa định vị Nhi khoa và booking lịch khám online</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">Tháng 08/2024</span>
+<span class="font-body-sm text-body-sm text-secondary">01/08 - 31/08/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700">GA4</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-700">GSC</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">Sheets Sync</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Đã xuất bản
+                </span>
+<span class="font-mono text-label-xs text-secondary bg-slate-bg px-1.5 py-0.5 rounded">v1.2</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>02/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('Website Traffic &amp; SEO Analytics', 'Tháng 08/2024 (01/08 - 31/08/2024)', 'GA4, Google Search Console, Sheets', 'v1.2 (Chính thức)', 'BS. Minh Anh', '02/09/2024', '14 trang tóm tắt, 6 biểu đồ tương tác')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem HTML</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Tải file HTML hoàn chỉnh" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xuất bản lại với nhãn mới" type="button">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xem lịch sử phiên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Facebook Ads - Khám Tổng Quát Mùa Tựu Trường -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="30days" data-source="facebook" data-title="Facebook Ads - Chiến dịch Khám Tổng Quát Mùa Tựu Trường">
+<td class="py-3 px-space-md text-center text-secondary font-medium">02</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">Facebook Ads - Chiến dịch Khám Tổng Quát Mùa Tựu Trường</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Chi phí lead chuyển đổi gói khám kiểm tra sức khỏe đầu năm học học sinh mầm non &amp; tiểu học</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">Tháng 08/2024</span>
+<span class="font-body-sm text-body-sm text-secondary">01/08 - 31/08/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">campaign</span> Meta Ads
+                </span>
+<span class="text-[10px] text-secondary">(Báo cáo xuất CSV)</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Đã xuất bản
+              </span>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>01/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('Facebook Ads - Chiến dịch Khám Tổng Quát Mùa Tựu Trường', '01/08 - 31/08/2024', 'Meta Ads Manager (Định kỳ)', 'v1.0 (Chính thức)', 'Nguyễn Hoàng My (Media Buyer)', '01/09/2024', '8 trang thống kê CPA, CPL, Phễu tiếp cận')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem HTML</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Tải file HTML hoàn chỉnh" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xuất bản lại với nhãn mới" type="button">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xem lịch sử phiên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Facebook Content 7 ngày (Tuần 38) -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="7days" data-source="facebook" data-title="Facebook Content 7 ngày (Tuần 38)">
+<td class="py-3 px-space-md text-center text-secondary font-medium">03</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">Facebook Content 7 ngày (Tuần 38)</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Đo lường mức độ tương tác bài viết chuyên khoa Tai Mũi Họng &amp; cảnh báo cúm mùa</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">Tuần 38 / 2024</span>
+<span class="font-body-sm text-body-sm text-secondary">16/09 - 22/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 flex items-center gap-1 w-max">
+<span class="material-symbols-outlined text-[12px]">forum</span> Fanpage KinderHealth
+              </span>
+</td>
+<td class="py-3 px-space-md">
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Đã xuất bản
+              </span>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>23/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('Facebook Content 7 ngày (Tuần 38)', '16/09 - 22/09/2024', 'Fanpage KinderHealth', 'v1.0 (Hoàn tất)', 'Trần Thảo Linh (Content Lead)', '23/09/2024', '5 trang tương tác, top bài thảo luận hữu cơ')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem HTML</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Tải file HTML hoàn chỉnh" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xuất bản lại với nhãn mới" type="button">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xem lịch sử phiên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4: Facebook Content 30 ngày (Tháng 08) -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="30days" data-source="facebook" data-title="Facebook Content 30 ngày (Tháng 08)">
+<td class="py-3 px-space-md text-center text-secondary font-medium">04</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">Facebook Content 30 ngày (Tháng 08)</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Tổng quan chất lượng nội dung, mức độ tương tác phụ huynh và giải đáp thắc mắc sức khỏe trẻ em</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">Tháng 08/2024</span>
+<span class="font-body-sm text-body-sm text-secondary">01/08 - 31/08/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 flex items-center gap-1 w-max">
+<span class="material-symbols-outlined text-[12px]">forum</span> Fanpage KinderHealth
+              </span>
+</td>
+<td class="py-3 px-space-md">
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Đã xuất bản
+              </span>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>02/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('Facebook Content 30 ngày (Tháng 08)', '01/08 - 31/08/2024', 'Fanpage KinderHealth', 'v1.0 (Chuẩn duyệt)', 'Trần Thảo Linh (Content Lead)', '02/09/2024', '11 trang phân tích chủ đề, tỷ lệ share &amp; bình luận')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem HTML</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Tải file HTML hoàn chỉnh" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xuất bản lại với nhãn mới" type="button">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xem lịch sử phiên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 5: Facebook Content 6 tháng (H1 2024) -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="6months" data-source="facebook" data-title="Facebook Content 6 tháng (H1 2024)">
+<td class="py-3 px-space-md text-center text-secondary font-medium">05</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">Facebook Content 6 tháng (H1 2024)</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">inventory_2</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Báo cáo tổng kết nửa đầu năm, đánh giá hiệu quả phát triển cộng đồng mẹ và bé</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">6 Tháng (H1 2024)</span>
+<span class="font-body-sm text-body-sm text-secondary">01/01 - 30/06/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 flex items-center gap-1 w-max">
+<span class="material-symbols-outlined text-[12px]">folder_special</span> Tổng kết Fanpage H1
+              </span>
+</td>
+<td class="py-3 px-space-md">
+<span class="inline-flex items-center gap-1 bg-slate-100 text-secondary px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Lưu trữ
+              </span>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>05/07/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('Facebook Content 6 tháng (H1 2024)', '01/01 - 30/06/2024', 'Fanpage Tổng kết nửa đầu năm', 'v1.0 (Lưu trữ kho)', 'Trần Thảo Linh', '05/07/2024', '26 trang phân tích chuỗi chiến dịch H1 2024')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem HTML</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Tải file HTML hoàn chỉnh" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Khôi phục xuất bản lại" type="button">
+<span class="material-symbols-outlined text-[18px]">unarchive</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xem lịch sử phiên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 6: TikTok Ads - Chiến dịch Video Bác Sĩ Dinh Dưỡng -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="7days" data-source="tiktok" data-title="TikTok Ads - Chiến dịch Video Bác Sĩ Dinh Dưỡng">
+<td class="py-3 px-space-md text-center text-secondary font-medium">06</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">TikTok Ads - Chiến dịch Video Bác Sĩ Dinh Dưỡng</span>
+<span class="px-1.5 py-0.5 rounded bg-brand-magenta/10 text-brand-magenta text-[10px] font-bold">MỚI</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Thử nghiệm kênh ngắn tư vấn thực đơn biếng ăn, số lượt hoàn tất video 100%</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">15 Ngày (Đợt 1)</span>
+<span class="font-body-sm text-body-sm text-secondary">01/09 - 15/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-neutral-900 text-white flex items-center gap-1 w-max">
+<span class="material-symbols-outlined text-[12px]">music_video</span> TikTok Ads Manager
+              </span>
+</td>
+<td class="py-3 px-space-md">
+<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Bản nháp
+              </span>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>16/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('TikTok Ads - Chiến dịch Video Bác Sĩ Dinh Dưỡng', '01/09 - 15/09/2024', 'TikTok Ads Manager', 'v0.9 (Bản nháp nội bộ)', 'Lê Quốc Đạt (Performance)', '16/09/2024', '6 trang đo lường CPV, Click-to-message')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem nháp</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-primary transition-colors" title="Xuất bản chính thức" type="button">
+<span class="material-symbols-outlined text-[18px]">publish</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Chỉnh sửa cấu hình số liệu" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 7: Google Business Profile - Cơ sở Tân Bình & Q7 -->
+<tr class="report-row hover:bg-surface-container-low transition-colors group" data-period="30days" data-source="gmb" data-title="Google Business Profile - Báo cáo tương tác vị trí cơ sở Tân Bình &amp; Q7">
+<td class="py-3 px-space-md text-center text-secondary font-medium">07</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold group-hover:text-primary transition-colors">Google Business Profile - Báo cáo tương tác vị trí cơ sở Tân Bình &amp; Q7</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Tỷ lệ phụ huynh gọi điện chỉ đường, đánh giá 5 sao và lượt tìm kiếm theo định vị 2 cơ sở phòng khám</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex flex-col">
+<span class="font-semibold text-on-surface">Tháng 08/2024</span>
+<span class="font-body-sm text-body-sm text-secondary">01/08 - 31/08/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<div class="flex items-center gap-1.5">
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">pin_drop</span> CSV GMB Import
+                </span>
+<span class="text-[10px] text-secondary">(Offline Report)</span>
+</div>
+</td>
+<td class="py-3 px-space-md">
+<span class="inline-flex items-center gap-1 bg-emerald-50 text-status-fresh px-2 py-0.5 rounded font-label-xs text-label-xs uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-status-fresh"></span> Đã xuất bản
+              </span>
+</td>
+<td class="py-3 px-space-md text-secondary">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">event_available</span>
+<span>03/09/2024</span>
+</div>
+</td>
+<td class="py-3 px-space-md text-right pr-space-lg">
+<div class="flex items-center justify-end gap-1">
+<button class="px-2.5 py-1.5 bg-primary/10 hover:bg-primary text-primary hover:text-white rounded font-label-md text-label-md transition-colors flex items-center gap-1" onclick="openPreviewModal('Google Business Profile - Báo cáo tương tác vị trí cơ sở Tân Bình &amp; Q7', 'Tháng 08/2024', 'CSV GMB Import (2 Cơ sở)', 'v1.0 (Chính thức)', 'Vũ Mai Phương (CSKH Lead)', '03/09/2024', '7 trang chỉ số cuộc gọi, yêu cầu lộ trình &amp; đánh giá phụ huynh')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>Xem HTML</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Tải file HTML hoàn chỉnh" type="button">
+<span class="material-symbols-outlined text-[18px]">download</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xuất bản lại với nhãn mới" type="button">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container text-secondary hover:text-on-surface transition-colors" title="Xem lịch sử phiên bản" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Empty Filter Notice State -->
+<div class="hidden p-space-2xl text-center flex flex-col items-center justify-center space-y-space-sm" id="noResultsState">
+<div class="w-12 h-12 rounded-full bg-slate-bg flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[28px]">search_off</span>
+</div>
+<div class="space-y-1">
+<div class="font-headline-sm text-headline-sm text-on-surface">Không tìm thấy báo cáo phù hợp</div>
+<p class="font-body-sm text-body-sm text-secondary">Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc bỏ chọn các điều kiện lọc nguồn và chu kỳ thời gian.</p>
+</div>
+<button class="text-primary hover:underline font-label-md text-label-md" onclick="resetFilters()" type="button">Đặt lại toàn bộ bộ lọc</button>
+</div>
+<!-- Table Footer with Repository Retention Stats -->
+<div class="bg-slate-bg px-space-md py-space-sm flex flex-col sm:flex-row items-center justify-between gap-space-sm text-secondary font-body-sm text-body-sm">
+<div class="flex items-center gap-space-sm">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-status-fresh">cloud_done</span> Dung lượng HTML: <strong>48.2 MB</strong> / Không giới hạn
+        </span>
+<span class="hidden md:inline">|</span>
+<span class="hidden md:inline">Sao lưu tự động vào 00:00 hằng ngày</span>
+</div>
+<div class="flex items-center gap-space-xs font-label-md text-label-md">
+<span>Trang 1 / 1</span>
+<div class="flex items-center gap-1 ml-space-xs">
+<button class="p-1 rounded bg-card-bg text-outline cursor-not-allowed" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_left</span>
+</button>
+<button class="p-1 rounded bg-card-bg text-outline cursor-not-allowed" disabled="" type="button">
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Clinical Quality & Channel Segregation Insights -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Meta Ads Insight Card -->
+<div class="bg-card-bg rounded-xl p-space-md shadow-sm space-y-space-xs flex flex-col justify-between">
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-secondary font-bold">Meta Ads &amp; Fanpage</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700">4 Báo cáo</span>
+</div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Kênh phụ huynh tương tác</div>
+<p class="font-body-sm text-body-sm text-secondary">Tập hợp các nội dung tư vấn dinh dưỡng, tiêm chủng và chiến dịch tiếp cận phụ huynh mầm non có trẻ 0-6 tuổi.</p>
+</div>
+<div class="pt-space-xs text-secondary font-body-sm text-body-sm flex items-center justify-between">
+<span>Cập nhật gần nhất:</span>
+<span class="font-semibold text-on-surface">23/09/2024</span>
+</div>
+</div>
+<!-- SEO & Web Analytics Card -->
+<div class="bg-card-bg rounded-xl p-space-md shadow-sm space-y-space-xs flex flex-col justify-between">
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-secondary font-bold">SEO &amp; Organic Web</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-status-fresh">1 Báo cáo</span>
+</div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Cổng thông tin &amp; Đặt lịch</div>
+<p class="font-body-sm text-body-sm text-secondary">Tập trung vào 45 bài viết chuyên môn được Hội đồng Y khoa KinderHealth kiểm duyệt nội dung y tế.</p>
+</div>
+<div class="pt-space-xs text-secondary font-body-sm text-body-sm flex items-center justify-between">
+<span>Chỉ số tăng trưởng:</span>
+<span class="font-semibold text-status-fresh">+18.4% lượt xem hữu cơ</span>
+</div>
+</div>
+<!-- TikTok & GBP Local Reach Card -->
+<div class="bg-card-bg rounded-xl p-space-md shadow-sm space-y-space-xs flex flex-col justify-between">
+<div class="space-y-space-2xs">
+<div class="flex items-center justify-between">
+<span class="font-label-xs text-label-xs uppercase text-secondary font-bold">Kênh Bản Đồ &amp; Video Ngắn</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-purple-700">2 Báo cáo</span>
+</div>
+<div class="font-headline-sm text-headline-sm text-on-surface">Độ phủ cơ sở &amp; Định vị</div>
+<p class="font-body-sm text-body-sm text-secondary">Ghi nhận lượng di chuyển của phụ huynh tới Cơ sở 1 (Tân Bình) và Cơ sở 2 (Quận 7) qua điều hướng Maps.</p>
+</div>
+<div class="pt-space-xs text-secondary font-body-sm text-body-sm flex items-center justify-between">
+<span>Độ phủ địa lý:</span>
+<span class="font-semibold text-on-surface">Bán kính 8km nội thành</span>
+</div>
+</div>
+</div>
+<!-- Interactive Modal / Slide Drawer Preview -->
+<div class="fixed inset-0 bg-sidebar-surface/60 z-50 backdrop-blur-sm hidden transition-opacity flex justify-end" id="previewDrawerBackdrop">
+<div class="w-full max-w-2xl bg-card-bg h-full shadow-2xl flex flex-col justify-between transform transition-transform duration-300 translate-x-full" id="previewDrawerContent">
+<!-- Drawer Header -->
+<div class="p-space-lg bg-slate-bg flex items-start justify-between">
+<div class="space-y-space-2xs pr-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="bg-primary text-on-primary text-label-xs font-label-xs font-bold px-2 py-0.5 rounded uppercase" id="modalVersionBadge">v1.2 (Chính thức)</span>
+<span class="text-secondary font-body-sm text-body-sm">Đã đóng băng số liệu</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-semibold leading-tight" id="modalReportTitle">Website Traffic &amp; SEO Analytics</h2>
+<p class="font-body-md text-body-md text-secondary" id="modalReportPeriod">Chu kỳ: Tháng 08/2024 (01/08 - 31/08/2024)</p>
+</div>
+<button class="p-2 rounded-lg bg-card-bg hover:bg-surface-container text-secondary hover:text-on-surface shadow-sm transition-colors" onclick="closePreviewModal()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Drawer Body Detail Content -->
+<div class="p-space-lg overflow-y-auto space-y-space-lg flex-1">
+<!-- Meta Details Grid -->
+<div class="grid grid-cols-2 gap-space-md bg-slate-bg p-space-md rounded-xl">
+<div class="space-y-1">
+<span class="font-label-xs text-label-xs uppercase text-secondary">Nguồn dữ liệu nhập</span>
+<div class="font-headline-sm text-headline-sm text-on-surface font-medium" id="modalReportSource">GA4, Search Console, Sheets</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-xs text-label-xs uppercase text-secondary">Người phê duyệt / Xuất bản</span>
+<div class="font-headline-sm text-headline-sm text-on-surface font-medium" id="modalReportAuthor">BS. Minh Anh</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-xs text-label-xs uppercase text-secondary">Thời điểm lưu trữ</span>
+<div class="font-body-md text-body-md text-on-surface font-medium" id="modalReportUpdated">02/09/2024 14:30 GMT+7</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-xs text-label-xs uppercase text-secondary">Quy mô tài liệu HTML</span>
+<div class="font-body-md text-body-md text-on-surface font-medium" id="modalReportScale">14 trang tóm tắt, 6 biểu đồ tương tác</div>
+</div>
+</div>
+<!-- Static Document Disclaimer -->
+<div class="bg-amber-50 p-space-md rounded-xl space-y-1 text-amber-900">
+<div class="flex items-center gap-1.5 font-label-md text-label-md font-semibold">
+<span class="material-symbols-outlined text-[18px] text-amber-700">info</span>
+<span>Lưu ý về tính toàn vẹn y khoa &amp; báo cáo:</span>
+</div>
+<p class="font-body-sm text-body-sm text-amber-800">
+            Tài liệu này được biên soạn độc lập và có chứng thực phiên bản lưu trữ. Tất cả các định dạng biểu đồ, chỉ số doanh thu khám và lượt chuyển đổi đặt khám của các bác sĩ chuyên khoa đã được mã hóa không chứa định danh bệnh nhi (Masked PII Compliant).
+          </p>
+</div>
+<!-- Simulation of HTML Snapshot Viewport -->
+<div class="space-y-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-secondary font-semibold uppercase">Xem trước cấu trúc trang (HTML Sandbox View)</span>
+<span class="text-status-fresh text-label-xs font-label-xs font-semibold flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-status-fresh"></span> HTML5 Validated
+            </span>
+</div>
+<div class="w-full h-56 bg-slate-bg rounded-xl p-space-md flex flex-col justify-between relative overflow-hidden shadow-inner">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-rose-400"></div>
+<div class="w-3 h-3 rounded-full bg-amber-400"></div>
+<div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+<span class="text-[11px] text-outline font-mono ml-2">preview://report-archive/kdh-export-2024.html</span>
+</div>
+<span class="text-label-xs text-secondary bg-white px-2 py-0.5 rounded shadow-sm">Static Render</span>
+</div>
+<div class="space-y-2 py-4">
+<div class="h-4 bg-surface-container rounded w-3/4"></div>
+<div class="h-3 bg-surface-container-high rounded w-1/2"></div>
+<div class="grid grid-cols-3 gap-2 pt-2">
+<div class="h-12 bg-white rounded shadow-sm p-2 flex flex-col justify-between">
+<div class="h-2 bg-slate-200 rounded w-10"></div>
+<div class="h-4 bg-teal-100 rounded w-16"></div>
+</div>
+<div class="h-12 bg-white rounded shadow-sm p-2 flex flex-col justify-between">
+<div class="h-2 bg-slate-200 rounded w-12"></div>
+<div class="h-4 bg-blue-100 rounded w-14"></div>
+</div>
+<div class="h-12 bg-white rounded shadow-sm p-2 flex flex-col justify-between">
+<div class="h-2 bg-slate-200 rounded w-8"></div>
+<div class="h-4 bg-amber-100 rounded w-12"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between text-secondary font-label-xs text-label-xs">
+<span>KinderHealth Pediatric Clinical Dashboard</span>
+<span>100% Khép kín &amp; Độc lập</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Drawer Footer Actions -->
+<div class="p-space-lg bg-card-bg flex items-center justify-between gap-space-md shadow-lg">
+<button class="px-space-md py-2.5 rounded-lg bg-slate-bg hover:bg-surface-container text-secondary hover:text-on-surface font-label-md text-label-md transition-colors" onclick="closePreviewModal()" type="button">
+          Đóng cửa sổ
+        </button>
+<div class="flex items-center gap-space-sm">
+<button class="inline-flex items-center gap-1.5 px-space-md py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md shadow-sm transition-colors" onclick="alert('Đang tải file HTML độc lập về máy...')" type="button">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span>Tải file .HTML</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-space-lg py-2.5 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md shadow transition-colors" onclick="openFullscreenReport()" type="button">
+<span class="material-symbols-outlined text-[18px]">open_in_new</span>
+<span>Mở báo cáo toàn màn hình</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Create New Report from Analytics Guidance Modal -->
+<div class="fixed inset-0 bg-sidebar-surface/60 z-50 backdrop-blur-sm hidden items-center justify-center p-space-md" id="createReportModal">
+<div class="w-full max-w-lg bg-card-bg rounded-2xl shadow-2xl p-space-lg space-y-space-md transform transition-all">
+<div class="flex items-start justify-between">
+<div class="space-y-1">
+<h3 class="font-headline-lg text-headline-lg text-on-surface font-semibold">Tạo báo cáo mới từ phân tích</h3>
+<p class="font-body-sm text-body-sm text-secondary">Khởi tạo bản đóng băng dữ liệu chuẩn hóa từ các bảng phân tích đa kênh</p>
+</div>
+<button class="p-1 rounded text-secondary hover:text-on-surface" onclick="closeCreateModal()" type="button">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="space-y-space-sm font-body-md text-body-md">
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Chọn Kênh Phân Tích Cơ Sở</label>
+<select class="w-full p-2.5 bg-slate-bg rounded-lg text-on-surface font-body-md text-body-md focus:outline-none">
+<option>Website Traffic &amp; SEO (GA4 + GSC)</option>
+<option>Facebook Ads &amp; Chuyển đổi Lead</option>
+<option>Facebook Fanpage Organic Content</option>
+<option>TikTok Ads Performance</option>
+<option>Google Business Profile (Tân Bình &amp; Q7)</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Chu kỳ đóng băng số liệu</label>
+<div class="grid grid-cols-2 gap-space-xs">
+<input class="p-2 bg-slate-bg rounded-lg text-on-surface text-body-sm" type="date" value="2024-09-01"/>
+<input class="p-2 bg-slate-bg rounded-lg text-on-surface text-body-sm" type="date" value="2024-09-30"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface font-semibold">Tên phiên bản báo cáo lưu</label>
+<input class="w-full p-2.5 bg-slate-bg rounded-lg text-on-surface placeholder:text-outline text-body-sm" placeholder="Ví dụ: Báo cáo Marketing Tổng Hợp Tháng 09/2024" type="text"/>
+</div>
+</div>
+<div class="pt-space-xs flex items-center justify-end gap-space-sm">
+<button class="px-space-md py-2 rounded-lg bg-slate-bg text-secondary font-label-md text-label-md hover:bg-surface-container" onclick="closeCreateModal()" type="button">Hủy</button>
+<button class="px-space-lg py-2 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md shadow" onclick="confirmGenerateNew()" type="button">Tiến hành khởi tạo snapshot</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  let currentSource = 'all';
+  let currentPeriod = 'all';
+
+  function filterReports() {
+    const query = document.getElementById('reportSearchInput').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.report-row');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const title = row.getAttribute('data-title').toLowerCase();
+      const source = row.getAttribute('data-source');
+      const period = row.getAttribute('data-period');
+
+      const matchesSearch = title.includes(query);
+      const matchesSource = (currentSource === 'all') || (source === currentSource);
+      const matchesPeriod = (currentPeriod === 'all') || (period === currentPeriod);
+
+      if (matchesSearch && matchesSource && matchesPeriod) {
+        row.style.display = '';
+        visibleCount++;
+      } else {
+        row.style.display = 'none';
+      }
+    });
+
+    document.getElementById('displayedCount').textContent = visibleCount;
+    const noResults = document.getElementById('noResultsState');
+    if (visibleCount === 0) {
+      noResults.classList.remove('hidden');
+    } else {
+      noResults.classList.add('hidden');
+    }
+  }
+
+  function setSourceFilter(source, btn) {
+    currentSource = source;
+    document.querySelectorAll('.source-chip').forEach(b => {
+      b.classList.remove('bg-primary', 'text-on-primary');
+      b.classList.add('bg-slate-bg', 'text-secondary');
+    });
+    btn.classList.remove('bg-slate-bg', 'text-secondary');
+    btn.classList.add('bg-primary', 'text-on-primary');
+    filterReports();
+  }
+
+  function setPeriodFilter(period, btn) {
+    currentPeriod = period;
+    document.querySelectorAll('.period-btn').forEach(b => {
+      b.classList.remove('bg-card-bg', 'text-primary', 'shadow-sm');
+      b.classList.add('text-secondary');
+    });
+    btn.classList.add('bg-card-bg', 'text-primary', 'shadow-sm');
+    btn.classList.remove('text-secondary');
+    filterReports();
+  }
+
+  function resetFilters() {
+    document.getElementById('reportSearchInput').value = '';
+    currentSource = 'all';
+    currentPeriod = 'all';
+    const allSourceBtn = document.querySelector('.source-chip');
+    if (allSourceBtn) setSourceFilter('all', allSourceBtn);
+    const allPeriodBtn = document.querySelector('.period-btn');
+    if (allPeriodBtn) setPeriodFilter('all', allPeriodBtn);
+  }
+
+  function openPreviewModal(title, period, source, version, author, updated, scale) {
+    document.getElementById('modalReportTitle').textContent = title;
+    document.getElementById('modalReportPeriod').textContent = 'Chu kỳ: ' + period;
+    document.getElementById('modalReportSource').textContent = source;
+    document.getElementById('modalVersionBadge').textContent = version;
+    document.getElementById('modalReportAuthor').textContent = author;
+    document.getElementById('modalReportUpdated').textContent = updated + ' (Lưu trữ cố định)';
+    document.getElementById('modalReportScale').textContent = scale;
+
+    const backdrop = document.getElementById('previewDrawerBackdrop');
+    const drawer = document.getElementById('previewDrawerContent');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+      drawer.classList.remove('translate-x-full');
+    }, 10);
+  }
+
+  function closePreviewModal() {
+    const backdrop = document.getElementById('previewDrawerBackdrop');
+    const drawer = document.getElementById('previewDrawerContent');
+    drawer.classList.add('translate-x-full');
+    setTimeout(() => {
+      backdrop.classList.add('hidden');
+    }, 300);
+  }
+
+  function openCreateModal() {
+    const modal = document.getElementById('createReportModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
+
+  function closeCreateModal() {
+    const modal = document.getElementById('createReportModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  function confirmGenerateNew() {
+    closeCreateModal();
+    alert('Khởi tạo yêu cầu chụp ảnh số liệu thành công. Báo cáo mới đang được tạo và sẽ xuất hiện trong kho lưu trữ sau ít phút.');
+  }
+
+  function openFullscreenReport() {
+    alert('Mở cửa sổ trình duyệt độc lập chứa báo cáo HTML hoàn chỉnh của KinderHealth...');
+  }
+</script></main></div></body></html>

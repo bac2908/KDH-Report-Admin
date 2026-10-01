@@ -1,0 +1,8 @@
+{
+  "name": "kdh-report-admin-ui-tests",
+  "private": true,
+  "type": "module",
+  "description": "DOM integration tests only; production frontend has no Node runtime dependency.",
+  "scripts": { "test": "node --experimental-vm-modules --test tests/ui.test.js" },
+  "devDependencies": { "jsdom": "^26.1.0" }
+}

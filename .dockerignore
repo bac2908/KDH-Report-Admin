@@ -1,0 +1,11 @@
+.venv
+.git
+.env
+instance
+node_modules
+.npm-cache
+test-results
+stitch_kdh_report_admin_frontend
+tests
+**/__pycache__
+**/*.pyc
