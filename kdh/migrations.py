@@ -157,20 +157,7 @@ CREATE TABLE IF NOT EXISTS report_bundle_sections (
     PRIMARY KEY(bundle_id, section_key)
 );
 
-INSERT INTO clients (
-    id, name, slug, timezone, active, created_at, updated_at
-)
-SELECT
-    'client_kinderhealth',
-    'KinderHealth',
-    'kinderhealth',
-    'Asia/Ho_Chi_Minh',
-    1,
-    CURRENT_TIMESTAMP,
-    CURRENT_TIMESTAMP
-WHERE NOT EXISTS (
-    SELECT 1 FROM clients WHERE id='client_kinderhealth'
-);
+
 """,
     ),
 ]
@@ -208,3 +195,24 @@ def apply_migrations(store) -> None:
                 "INSERT INTO schema_migrations (version,name,applied_at) VALUES (?,?,?)",
                 (version, name, _utc_now()),
             )
+
+        timestamp = _utc_now()
+        db.execute(
+            """
+            INSERT INTO clients (
+                id,name,slug,timezone,active,created_at,updated_at
+            )
+            SELECT ?,?,?,?,?,?,?
+            WHERE NOT EXISTS (SELECT 1 FROM clients WHERE id=?)
+            """,
+            (
+                "client_kinderhealth",
+                "KinderHealth",
+                "kinderhealth",
+                "Asia/Ho_Chi_Minh",
+                1,
+                timestamp,
+                timestamp,
+                "client_kinderhealth",
+            ),
+        )
