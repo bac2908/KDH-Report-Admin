@@ -1,10 +1,10 @@
 import { api, setCsrf } from './api.js';
 import { esc, date, time, num, icon, badge, empty, button, notice, modal, toast, table, sourceNames, kindNames, roles } from './ui.js';
-import { pages, connectionPlatforms, loginView, shell, overviewView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, jobProgress, dataTable } from './views.js';
+import { pages, connectionPlatforms, loginView, shell, overviewView, clientsView, assetsView, syncView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, datasetsView, datasetsTable, datasetDetailView, datasetDetailNotFoundView, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, skeletonView, jobProgress, dataTable } from './views.js';
 
-const state = { user: null, overview: null, page: 'overview', generation: 0, authEpoch: 0, dataset: null, draft: null, job: null, tab: 'summary', tablePage: 0, uploads: [], reports: [], users: [], schedules: [], reportFilter: {}, jobFilter: '' };
+const state = { user: null, overview: null, page: 'overview', generation: 0, authEpoch: 0, dataset: null, datasetDetail: null, datasetDetailTab: 'summary', datasets: [], draft: null, job: null, tab: 'summary', tablePage: 0, uploads: [], reports: [], users: [], schedules: [], reportFilter: {}, jobFilter: '' };
 const $ = s => document.querySelector(s);
-function clearSessionData() { state.authEpoch++; state.generation++; state.dataset = null; state.draft = null; state.job = null; state.overview = null; state.uploads = []; state.reports = []; state.users = []; state.schedules = []; state.jobs = []; state.events = []; state.connection = null; state.settings = null; state.reportFilter = {}; state.jobFilter = ''; state.tab = 'summary'; state.tablePage = 0; $('#modal').close(); $('#modal').replaceChildren(); }
+function clearSessionData() { state.authEpoch++; state.generation++; state.dataset = null; state.datasetDetail = null; state.datasetDetailTab = 'summary'; state.datasets = []; state.draft = null; state.job = null; state.overview = null; state.uploads = []; state.reports = []; state.users = []; state.schedules = []; state.jobs = []; state.events = []; state.connection = null; state.settings = null; state.reportFilter = {}; state.jobFilter = ''; state.tab = 'summary'; state.tablePage = 0; $('#modal').close(); $('#modal').replaceChildren(); }
 function today() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
 function offset(day, n) { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function period(kind) { const t = today(); if (kind === 'this_month') return { start: t.slice(0, 8) + '01', end: t }; if (kind === 'previous_month') { const end = offset(t.slice(0, 8) + '01', -1); return { start: end.slice(0, 8) + '01', end }; } const end = offset(t, -1); return { start: offset(end, kind === 'last7' ? -6 : -27), end }; }
@@ -19,8 +19,59 @@ async function navigate() {
     if (!state.user) return; const version = ++state.generation; const parts = location.hash.slice(1).split('?'); const route = parts[0].split('/'); const oauthResult = new URLSearchParams(parts[1]).get('oauth'); state.page = pages[route[0]] ? route[0] : 'overview'; state.connectionPlatform = state.page === 'connections' && connectionPlatforms[route[1]] ? route[1] : state.page === 'connections' && oauthResult ? 'google' : null; const page = state.page; $('#app').innerHTML = shell(state.user, state.overview, page, state.connectionPlatform); $('#content').innerHTML = '<div class="empty"><span class="spinner"></span><p>Đang tải dữ liệu…</p></div>'; try {
         const read = async path => { const result = await api(path); if (version !== state.generation) throw new Error('Đã chuyển màn hình hoặc phiên đăng nhập.'); return result; };
         let html = '';
-        if (['connections', 'users', 'settings', 'schedules'].includes(page) && state.user.role !== 'admin') throw new Error('Màn hình này chỉ dành cho quản trị viên.');
+        if (['connections', 'assets', 'users', 'settings', 'schedules'].includes(page) && state.user.role !== 'admin') throw new Error('Màn hình này chỉ dành cho quản trị viên.');
         if (page === 'overview') { state.overview = await read('/overview'); html = overviewView(state.overview, state.user); }
+        if (page === 'clients') html = clientsView();
+        if (page === 'datasets') {
+            if (route.length > 1) {
+                let datasetId;
+                try { datasetId = decodeURIComponent(route[1]); } catch { datasetId = ''; }
+                if (!datasetId) html = datasetDetailNotFoundView();
+                else {
+                    try {
+                        state.datasetDetail = await read('/datasets/' + encodeURIComponent(datasetId));
+                        state.datasetDetailTab = 'summary';
+                        state.tablePage = 0;
+                        html = datasetDetailView(state.datasetDetail, state.overview.types, state.datasetDetailTab, state.tablePage);
+                    } catch (err) {
+                        if (err.status !== 404) throw err;
+                        state.datasetDetail = null;
+                        html = datasetDetailNotFoundView();
+                    }
+                }
+            }
+            else {
+                const [jobs, reports] = await Promise.all([read('/jobs'), read('/reports')]);
+                const references = new Map();
+                for (const item of [...jobs, ...reports]) {
+                    if (typeof item.dataset_id !== 'string' || !item.dataset_id) continue;
+                    const timestamp = Date.parse(item.created_at || '') || 0;
+                    references.set(item.dataset_id, Math.max(references.get(item.dataset_id) || 0, timestamp));
+                }
+                const ids = [...references].sort((a, b) => b[1] - a[1]).slice(0, 50).map(([id]) => id);
+                const loaded = new Array(ids.length);
+                const loadErrors = [];
+                let next = 0;
+                const loadWorker = async () => {
+                    while (next < ids.length) {
+                        const index = next++;
+                        try {
+                            loaded[index] = await read('/datasets/' + encodeURIComponent(ids[index]));
+                        } catch (err) {
+                            if (version !== state.generation) throw err;
+                            if (err.status === 404) loadErrors.push({ id: ids[index], message: err.message });
+                            else throw err;
+                        }
+                    }
+                };
+                await Promise.all(Array.from({ length: Math.min(6, ids.length) }, loadWorker));
+                state.datasets = loaded.filter(Boolean);
+                html = datasetsView(state.datasets, state.overview.types, loadErrors);
+            }
+        }
+        if (page === 'report-builder') html = skeletonView(page);
+        if (page === 'assets') { state.connection = await read('/google'); html = assetsView(state.connection); }
+        if (page === 'sync') { const sources = await Promise.all([read('/jobs'), state.user.role === 'admin' ? read('/google') : Promise.resolve(null)]); state.jobs = sources[0]; state.connection = sources[1]; html = syncView(state.jobs, state.overview, state.user, state.connection); }
         if (page === 'connections') { state.connection = await read('/google'); html = state.connectionPlatform === 'google' ? connectionsView(state.connection) : state.connectionPlatform ? platformDetailView(state.connectionPlatform) : platformConnectionsView(state.connection); if (oauthResult) { html = notice(oauthResult === 'success' ? 'Đã kết nối Google. Các nguồn đang được kiểm tra.' : oauthResult === 'denied' ? 'Bạn đã hủy cấp quyền Google.' : 'Kết nối chưa hoàn tất. Hãy thử kết nối lại.', oauthResult === 'success' ? 'green' : 'amber') + html; history.replaceState(null, '', '#connections/google'); } }
         if (page === 'analysis') { const requested = new URLSearchParams(parts[1]).get('dataset') || (!state.dataset && state.draft.demo && !state.draft.upload_id ? state.overview.demo_datasets?.[state.draft.report_type] : null); if (requested && state.dataset?.id !== requested) { state.dataset = await read('/datasets/' + encodeURIComponent(requested)); state.draft = { ...state.dataset.params }; state.tab = 'summary'; state.tablePage = 0; } if (state.overview.types.some(t => t.id === 'gmb')) state.uploads = await read('/uploads'); html = analysisView(state, state.overview.types, state.user); }
         if (page === 'reports') { state.reports = await read('/reports'); html = reportsView(state.reports, state.overview.types, state.user, state.reportFilter); }
@@ -82,7 +133,7 @@ async function runAnalysis() {
     } catch (err) { if (epoch !== state.authEpoch) return; state.job = null; renderAnalysis(); throw err; }
 }
 
-function exportModal() { if (!state.dataset?.exportable || isDirty() || state.job) throw new Error('Cần kết quả hợp lệ khớp bộ lọc hiện tại trước khi xuất.'); const d = state.dataset; const p = d.params; const sheets = ['Tong_quan', ...Object.keys(d.sources).flatMap(k => ({ ga4: ['GA4_theo_ngay', 'GA4_nguon_truy_cap', 'GA4_trang'], gsc: ['GSC_theo_ngay', 'GSC_truy_van'], keywords: ['Keyword_tracking'], gmb: ['GMB_co_so'] }[k]))]; if (p.compare) for (const k of Object.keys(d.sources)) sheets.push({ ga4: 'GA4_ky_truoc', gsc: 'GSC_ky_truoc', keywords: 'Keyword_ky_truoc', gmb: 'GMB_ky_truoc' }[k]); modal('Xuất Excel từ kết quả đang xem', `<div id="export-status"><div class="details"><dl><dt>Báo cáo</dt><dd>${esc(state.overview.types.find(t => t.id === p.report_type)?.label)}</dd><dt>Khoảng ngày</dt><dd>${date(p.start)} → ${date(p.end)}</dd><dt>Kỳ so sánh</dt><dd>${p.compare ? date(p.previous_start) + ' → ' + date(p.previous_end) : 'Không so sánh'}</dd><dt>GSC</dt><dd>web · Loại trừ /san-pham/: ${p.exclude_products ? 'Có' : 'Không'}</dd><dt>Lấy dữ liệu</dt><dd>${time(d.created_at)}</dd><dt>Kết quả</dt><dd class="code">${d.id}</dd></dl></div><div class="source-summary-list spaced">${Object.values(d.sources).map(s => `<div><span>${sourceNames[s.source]}<br><small>Dữ liệu đến ${date(s.latest_available_date)}</small></span>${badge(s.status)}</div>${(s.warnings || []).map(w => notice(w, 'amber')).join('')}`).join('')}</div><h3 class="spaced">Các sheet trong file</h3><ul class="export-list">${sheets.map(s => `<li>${s}</li>`).join('')}</ul><p class="form-note">Dữ liệu nguồn được giữ nguyên theo kết quả này. Không gọi lấy một tập dữ liệu mới khi xuất.</p></div>`, button('Đóng', 'close-modal') + button(icon('download', 16) + ' Tạo file Excel', 'export-confirm', 'primary', `data-id="${d.id}"`)); }
+function exportModal(dataset = state.dataset) { if (!dataset?.exportable || (dataset === state.dataset && (isDirty() || state.job))) throw new Error('Cần kết quả hợp lệ khớp bộ lọc hiện tại trước khi xuất.'); const d = dataset; const p = d.params || {}; const sourceData = d.sources && typeof d.sources === 'object' ? d.sources : {}; const sheets = ['Tong_quan', ...Object.keys(sourceData).flatMap(k => ({ ga4: ['GA4_theo_ngay', 'GA4_nguon_truy_cap', 'GA4_trang'], gsc: ['GSC_theo_ngay', 'GSC_truy_van'], keywords: ['Keyword_tracking'], gmb: ['GMB_co_so'] }[k] || []))]; if (p.compare) for (const k of Object.keys(sourceData)) { const sheet = { ga4: 'GA4_ky_truoc', gsc: 'GSC_ky_truoc', keywords: 'Keyword_ky_truoc', gmb: 'GMB_ky_truoc' }[k]; if (sheet) sheets.push(sheet); } modal('Xuất Excel từ Dataset snapshot', `<div id="export-status"><div class="details"><dl><dt>Báo cáo</dt><dd>${esc(state.overview.types.find(t => t.id === p.report_type)?.label || p.report_type || '—')}</dd><dt>Khoảng ngày</dt><dd>${date(p.start)} → ${date(p.end)}</dd><dt>Kỳ so sánh</dt><dd>${p.compare ? date(p.previous_start) + ' → ' + date(p.previous_end) : 'Không so sánh'}</dd><dt>GSC</dt><dd>web · Loại trừ /san-pham/: ${p.exclude_products ? 'Có' : 'Không'}</dd><dt>Lấy dữ liệu</dt><dd>${time(d.created_at)}</dd><dt>Kết quả</dt><dd class="code">${esc(d.id)}</dd></dl></div><div class="source-summary-list spaced">${Object.values(sourceData).map(source => { const s = source || {}; return `<div><span>${esc(sourceNames[s.source] || s.source || 'Nguồn dữ liệu')}<br><small>Dữ liệu đến ${date(s.latest_available_date)}</small></span>${s.status ? badge(s.status) : ''}</div>${(s.warnings || []).map(w => notice(w, 'amber')).join('')}`; }).join('')}</div><h3 class="spaced">Các sheet trong file</h3><ul class="export-list">${sheets.map(s => `<li>${esc(s)}</li>`).join('')}</ul><p class="form-note">Dữ liệu nguồn được giữ nguyên theo Dataset snapshot này. Không gọi lấy một tập dữ liệu mới khi xuất.</p></div>`, button('Đóng', 'close-modal') + button(icon('download', 16) + ' Tạo file Excel', 'export-confirm', 'primary', `data-id="${esc(d.id)}"`)); }
 async function createExport(id) { const result = await api('/datasets/' + id + '/export', 'POST', {}); $('#modal footer').innerHTML = button('Đóng', 'close-modal'); $('#export-status').innerHTML = '<div class="empty"><span class="spinner"></span><h3>Đang tạo file Excel…</h3><p>Dữ liệu và bộ lọc trên màn hình được giữ nguyên.</p></div>'; const job = await waitJob(result.job_id); if (job.status !== 'succeeded') throw new Error(job.error || 'Xuất Excel thất bại. Dữ liệu đang xem vẫn được giữ.'); const body = `${notice('File đã sẵn sàng. Bấm Tải Excel để lưu về máy.', 'green')}<a class="btn primary full" href="/api/jobs/${job.id}/download">${icon('download', 16)} Tải Excel</a>`; if ($('#modal').open && $('#export-status')) $('#export-status').innerHTML = body; else modal('File Excel đã sẵn sàng', body, button('Đóng', 'close-modal')); }
 
 async function jobDetail(id) { const j = await api('/jobs/' + id); const p = j.params; modal('Chi tiết tác vụ', `${p.demo ? notice(p.simulated_history ? 'DEMO · Lịch sử minh họa được tạo sẵn.' : 'DEMO · Tác vụ sử dụng số liệu mô phỏng.', 'blue') : ''}${jobProgress(j)}<div class="details"><dl><dt>Mã tác vụ</dt><dd class="code">${j.id}</dd><dt>Kỳ dữ liệu</dt><dd>${date(p.start)} → ${date(p.end)}</dd><dt>Kỳ so sánh</dt><dd>${p.compare ? date(p.previous_start) + ' → ' + date(p.previous_end) : 'Không'}</dd><dt>Bộ lọc GSC</dt><dd>web · Loại trừ /san-pham/: ${p.exclude_products ? 'Có' : 'Không'}</dd><dt>Bắt đầu</dt><dd>${time(j.started_at)}</dd><dt>Kết thúc</dt><dd>${time(j.finished_at)}</dd></dl></div><div class="spaced">${j.steps.map(s => `${s.error ? notice(sourceNames[s.source] + ': ' + s.error, 'red') : ''}${(s.warnings || []).map(w => notice(w)).join('')}`).join('')}</div>`, button('Đóng', 'close-modal') + (j.dataset_id ? button('Xem kết quả', 'open-dataset', 'secondary', `data-id="${j.dataset_id}"`) : '') + (j.kind === 'export' && j.status === 'succeeded' ? `<a class="btn primary" href="/api/jobs/${j.id}/download">Tải Excel</a>` : '') + (['failed', 'partial', 'interrupted'].includes(j.status) ? button('Thử lại', 'retry-job', 'primary', `data-id="${j.id}"`) : '') + (j.status === 'queued' && state.overview?.job_mode === 'request' && (j.user_id === state.user.id || state.user.role === 'admin') ? button('Chạy tác vụ', 'process-job', 'primary', `data-id="${j.id}"`) : '') + (['running', 'queued'].includes(j.status) ? button('Cập nhật', 'job-detail', 'primary', `data-id="${j.id}"`) : '')); }
@@ -103,14 +154,16 @@ async function act(action, el) {
         case 'connect-google': { const r = await api('/google/connect', 'POST', {}); location.assign(r.url); break; }
         case 'connect-facebook': toast('Kết nối Facebook sẽ khả dụng khi backend Meta được cấu hình.', true); break;
         case 'connect-tiktok': toast('Kết nối TikTok sẽ khả dụng khi backend TikTok được cấu hình.', true); break;
-        case 'check-google': { const r = await api('/google/check', 'POST', {}); toast(r.created ? 'Đã bắt đầu kiểm tra từng nguồn.' : 'Tác vụ kiểm tra này đang chạy.'); if (state.page === 'connections') await navigate(); const j = await waitJob(r.job_id); toast(j.status === 'succeeded' ? 'Các nguồn đã được kiểm tra.' : 'Đã kiểm tra. Một số nguồn cần xử lý.', j.status !== 'succeeded'); if (['overview', 'connections', 'activity'].includes(state.page)) await navigate(); break; }
+        case 'check-google': { const r = await api('/google/check', 'POST', {}); toast(r.created ? 'Đã bắt đầu kiểm tra từng nguồn.' : 'Tác vụ kiểm tra này đang chạy.'); if (state.page === 'connections') await navigate(); const j = await waitJob(r.job_id); toast(j.status === 'succeeded' ? 'Các nguồn đã được kiểm tra.' : 'Đã kiểm tra. Một số nguồn cần xử lý.', j.status !== 'succeeded'); if (['overview', 'connections', 'activity', 'sync'].includes(state.page)) await navigate(); break; }
         case 'disconnect-google': modal('Ngắt kết nối Google', notice('Các báo cáo đã lưu được giữ. Lần phân tích tiếp theo sẽ cần Admin kết nối lại.', 'amber'), button('Giữ kết nối', 'close-modal') + button('Ngắt kết nối', 'disconnect-confirm', 'danger')); break;
         case 'disconnect-confirm': { const r = await api('/google', 'DELETE'); $('#modal').close(); toast(r.message); await navigate(); break; }
         case 'preset': readDraft(); Object.assign(state.draft, period(el.dataset.value)); renderAnalysis(); break;
         case 'analysis-tab': state.tab = el.dataset.tab; state.tablePage = 0; $('#analysis-results').innerHTML = analysisResults(state); break;
-        case 'table-prev': state.tablePage = Math.max(0, state.tablePage - 1); $('#analysis-results').innerHTML = analysisResults(state); break;
-        case 'table-next': state.tablePage++; $('#analysis-results').innerHTML = analysisResults(state); break;
+        case 'dataset-detail-tab': state.datasetDetailTab = el.dataset.tab; state.tablePage = 0; $('#content').innerHTML = datasetDetailView(state.datasetDetail, state.overview.types, state.datasetDetailTab, state.tablePage) + footer(); break;
+        case 'table-prev': state.tablePage = Math.max(0, state.tablePage - 1); if (state.page === 'datasets' && state.datasetDetail) $('#content').innerHTML = datasetDetailView(state.datasetDetail, state.overview.types, state.datasetDetailTab, state.tablePage) + footer(); else $('#analysis-results').innerHTML = analysisResults(state); break;
+        case 'table-next': state.tablePage++; if (state.page === 'datasets' && state.datasetDetail) $('#content').innerHTML = datasetDetailView(state.datasetDetail, state.overview.types, state.datasetDetailTab, state.tablePage) + footer(); else $('#analysis-results').innerHTML = analysisResults(state); break;
         case 'export-modal': exportModal(); break;
+        case 'dataset-detail-export': exportModal(state.datasetDetail); break;
         case 'export-confirm': await createExport(id); break;
         case 'save-report': if (isDirty() || state.job) throw new Error('Áp dụng bộ lọc trước khi lưu.'); { const r = await api('/datasets/' + state.dataset.id + '/save', 'POST', {}); toast('Đã lưu bản nháp HTML.'); location.hash = 'reports'; break; }
         case 'import-reports': { const r = await api('/reports/import', 'POST', {}); toast(`Đã kiểm tra và nhập ${r.report_ids.length} báo cáo. Bản trùng được giữ nguyên.`); await navigate(); break; }
@@ -149,6 +202,15 @@ document.addEventListener('submit', async event => {
 
 document.addEventListener('change', event => { const el = event.target; if (el.closest('#analysis-form')) { readDraft(); if (el.name === 'report_type' || el.name === 'compare' || el.name === 'demo') renderAnalysis(); else updateFilterState(); } if (el.id === 'job-status-filter') { state.jobFilter = el.value; $('#content').innerHTML = activityView(state.jobs, state.events, state.user, state.jobFilter) + footer(); } if (el.id === 'csv-file') { const name = el.files?.[0]?.name || ''; const dates = name.match(/\d{4}-\d{1,2}-\d{1,2}/g); if (dates?.length >= 2) { const iso = d => d.split('-').map((s, i) => i ? s.padStart(2, '0') : s).join('-'); $('#csv-start').value = iso(dates[0]); $('#csv-end').value = iso(dates[1]); } } });
 document.addEventListener('input', event => { if (event.target.closest('#analysis-form')) { readDraft(); updateFilterState(); } });
+document.addEventListener('input', event => { if (event.target.closest('#dataset-filters')) updateDatasetTable(); });
+document.addEventListener('change', event => { if (event.target.closest('#dataset-filters')) updateDatasetTable(); });
+function updateDatasetTable() {
+    const form = $('#dataset-filters');
+    const region = $('#datasets-table-region');
+    if (!form || !region) return;
+    const filters = Object.fromEntries(new FormData(form).entries());
+    region.innerHTML = datasetsTable(state.datasets, state.overview.types, filters);
+}
 window.addEventListener('hashchange', () => { if ($('#modal').open) $('#modal').close(); navigate(); });
 $('#modal').addEventListener('click', e => { if (e.target === $('#modal')) { const rect = e.target.getBoundingClientRect(); if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) e.target.close(); } });
 start();
