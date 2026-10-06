@@ -1,10 +1,16 @@
 # KDH Report Admin
 
-Ứng dụng quản trị báo cáo nội bộ KinderHealth, xây từ thiết kế Stitch trong `stitch_kdh_report_admin_frontend/`. Flask phục vụ cả API và frontend tiếng Việt. Docker/local dùng SQLite và worker; Vercel dùng PostgreSQL và tác vụ xử lý trong HTTP request. Không cần chạy một Node backend hay MongoDB riêng.
+Ứng dụng quản trị báo cáo nội bộ KinderHealth, xây từ thiết kế Stitch trong `stitch_kdh_report_admin_frontend/`. Flask phục vụ cả API và frontend tiếng Việt. Docker chạy ứng dụng cùng worker nền, dùng SQLite trong volume bền vững. Backend vẫn hỗ trợ PostgreSQL cho deployment cấu hình riêng. Không cần chạy một Node backend hay MongoDB riêng.
 
-## Chạy trên Vercel
+## Chạy bằng Docker
 
-Làm theo [hướng dẫn Vercel + Neon](DEPLOY_VERCEL.md): tạo database, thêm các biến trong [.env.vercel.example](.env.vercel.example), cập nhật Google OAuth redirect URI rồi deploy code mới. Tài khoản, kết nối Google, kết quả, HTML và Excel được lưu trong PostgreSQL; `/tmp` không dùng làm nơi lưu dữ liệu lâu dài. Admin có thể thêm bộ demo ngay trong **Cài đặt**.
+Làm theo [hướng dẫn Docker](DEPLOY_DOCKER.md): cấu hình `.env`, build container và mở **http://127.0.0.1:8090**. Tài khoản, kết nối Google, dữ liệu và khóa mã hóa nằm trong volume `admin-data`. Lịch tự động do worker xử lý khi container đang chạy. Admin có thể thêm dữ liệu mẫu trong **Cài đặt**.
+
+## Report Bundle cho KDH-Report-New
+
+Admin có thể tạo report bundle từ các dataset đã lưu qua `POST /api/report-bundles`, tạo revision mới và xuất bản `provisional`/`final`. KDH-Report-New đọc snapshot bằng `GET /api/internal/v1/report-bundles/{report_id}` với Bearer `REPORT_SERVICE_TOKEN` chỉ giữ ở backend. GET không gọi provider, tính lại KPI hay phụ thuộc dữ liệu live. ID `rpt_...` giữ nguyên qua các revision; nội dung đã xuất bản không được sửa.
+
+Xem [endpoint, JSON contract, ví dụ request/response và migration 2](docs/report-bundles.md). Không thay thế luồng HTML/Excel hiện tại và không cần database thứ hai. Task này tập trung API/service/tests, chưa thêm UI tạo bundle.
 
 ## Demo bằng Docker trên máy này
 
@@ -18,7 +24,7 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-Dữ liệu local hiện tại đã được chuyển sang volume `kdh-report-admin_admin-data`, bao gồm tài khoản, phiên đăng nhập, lịch sử, kết quả và khóa mã hóa. Bản sao trước khi chuyển nằm ở `instance/backups/docker-*`. Bản Python chạy ngoài Docker đã được dừng để nhường cổng 8090. Từ thời điểm này, dữ liệu sử dụng là dữ liệu trong volume Docker; thư mục `instance` trên Windows là bản local trước khi chuyển.
+Compose lưu dữ liệu và khóa mã hóa trong volume `kdh-report-admin_admin-data`, gắn vào `/app/instance`. Thư mục `instance` trên Windows là môi trường local riêng; dữ liệu không tự đồng bộ giữa hai nơi.
 
 Các lệnh vận hành:
 
@@ -88,7 +94,7 @@ Tài sản mặc định đã được đưa vào cấu hình:
 
 Tài khoản Google cần được chia sẻ quyền riêng trên cả ba tài sản. Trạng thái thiếu quyền / lỗi API / không có dữ liệu được ghi riêng. Kết nối có thể cần cấp lại khi hết hạn hoặc bị thu hồi.
 
-Backend giữ access token và refresh token mã hóa bằng Fernet trong database. Docker/local dùng khóa ở `instance/encryption.key`; PostgreSQL/Vercel dùng biến `ENCRYPTION_KEY` cố định. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
+Backend giữ access token và refresh token mã hóa bằng Fernet trong database. Docker/local dùng khóa ở `instance/encryption.key`; deployment PostgreSQL dùng biến `ENCRYPTION_KEY` cố định. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
 
 Tài liệu API đã đối chiếu: [Google OAuth Web Server](https://developers.google.com/identity/protocols/oauth2/web-server), [GA4 runReport](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runReport), [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), [Sheets values.get](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get).
 
@@ -102,7 +108,7 @@ Tài liệu API đã đối chiếu: [Google OAuth Web Server](https://developer
 | Báo cáo đã lưu | Tạo HTML từ kết quả hợp lệ, nhập HTML cũ, xem trước trong sandbox, mở, tải, phiên bản, xuất bản nội bộ và chọn lại bản trước |
 | Kết nối Google | OAuth do backend xử lý, kiểm tra riêng từng nguồn, kết nối lại / ngắt kết nối; chỉ admin |
 | Lịch sử | Người chạy, tham số, thời gian, trạng thái từng bước, chạy lại lỗi, ngăn tạo trùng tác vụ đang chạy |
-| Dữ liệu đầu vào | CSV UTF-8 đến 5 MB local (request 4 MB trên Vercel), preview, kiểm tra cột / số liệu / mã cơ sở, file trùng và kỳ chồng lấn |
+| Dữ liệu đầu vào | CSV UTF-8, giới hạn request 5 MB, preview, kiểm tra cột / số liệu / mã cơ sở, file trùng và kỳ chồng lấn |
 | Lịch tự động | Ngày/tuần/tháng, giờ Việt Nam, 7/28 ngày đến hôm qua hoặc tháng trước, tạo bản nháp hoặc xuất bản nội bộ khi hợp lệ, bật/tắt |
 | Người dùng | Ba vai trò, cấp quyền theo loại báo cáo, vô hiệu hóa, đổi mật khẩu và thu hồi phiên cũ |
 | Cài đặt | Tên đơn vị và người lập, hiển thị chính sách múi giờ / phiên bản / xuất bản |
@@ -178,7 +184,7 @@ npm.cmd test
 .\.venv\Scripts\python.exe tests/run_http_smoke.py
 ```
 
-Hiện có 36 test Python (gồm 5 bài PostgreSQL cần `TEST_DATABASE_URL` riêng, tự bỏ qua khi chưa cấu hình), cùng 8 test giao diện trong `tests/ui.test.js`. Python dùng `unittest`, Flask test client, SQLite tạm và schema PostgreSQL riêng cho từng bài; giao diện dùng Node test runner và JSDOM với HTTP API giả lập. Các test dùng cấu hình OAuth riêng, không phụ thuộc Client ID/Secret thật trong `.env`. Xem [hướng dẫn kiểm thử PostgreSQL](DEPLOY_VERCEL.md#kiểm-thử-trước-khi-triển-khai).
+Chạy toàn bộ test Python bằng `python -m unittest discover -s tests -v`, cùng 8 test giao diện bằng `npm test`. Python dùng `unittest`, Flask test client, SQLite tạm và schema PostgreSQL riêng cho từng bài; giao diện dùng Node test runner và JSDOM với HTTP API giả lập. Các test dùng cấu hình OAuth riêng, không phụ thuộc Client ID/Secret thật trong `.env`. Xem [hướng dẫn kiểm thử PostgreSQL](DEPLOY_DOCKER.md#kiểm-thử).
 
 Test Python kiểm tra auth/CSRF/phân quyền, queue, dữ liệu thiếu/độ trễ, Excel theo snapshot, công thức độc hại, CSV, phiên bản/xuất bản, OAuth state, lịch chạy và chế độ demo. Test DOM kiểm tra đăng nhập, bộ lọc chưa áp dụng, export, điều hướng, chuyển demo/thật và xóa dữ liệu phiên cũ khi hết hạn. Dữ liệu giả trong kiểm thử và bộ demo được chọn riêng; lỗi nguồn thật không tự dùng dữ liệu mẫu.
 

@@ -2,9 +2,10 @@
 
 ## Decision
 
-- **Production / shared environment:** PostgreSQL (Neon via `DATABASE_URL`).
-- **Local development / Docker demo:** SQLite in `instance/kdh.sqlite3`.
-- PostgreSQL is the source of truth for deployed reporting data.
+- **Current Docker deployment:** SQLite in `/app/instance/kdh.sqlite3`, persisted in the `admin-data` volume along with its encryption key.
+- **Local development:** SQLite in `instance/kdh.sqlite3`.
+- **Optional shared deployment:** PostgreSQL via `DATABASE_URL` and a stable `ENCRYPTION_KEY`. This requires explicit container environment configuration; the supplied Compose file uses SQLite.
+- The configured Admin database is the source of truth for reporting data. Changing the database connection does not migrate existing data.
 - `KDH-Report-New` does not own a second reporting database in the current architecture; it will read published report bundles from the Admin internal API.
 
 ## Data flow

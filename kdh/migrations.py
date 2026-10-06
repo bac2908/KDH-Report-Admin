@@ -160,6 +160,15 @@ CREATE TABLE IF NOT EXISTS report_bundle_sections (
 
 """,
     ),
+    (
+        2,
+        "report_bundle_snapshots",
+        """
+ALTER TABLE report_bundles ADD COLUMN snapshot_payload TEXT;
+CREATE INDEX IF NOT EXISTS idx_report_bundles_published_revision
+ON report_bundles(bundle_key, status, revision);
+""",
+    ),
 ]
 
 
@@ -190,7 +199,12 @@ def apply_migrations(store) -> None:
         for version, name, script in MIGRATIONS:
             if version in applied:
                 continue
-            db.executescript(script)
+            # sqlite3.executescript commits the current transaction first. Execute
+            # these plain DDL statements individually to keep migration + version
+            # registration atomic and serialized on both database backends.
+            for statement in script.split(';'):
+                if statement.strip():
+                    db.execute(statement)
             db.execute(
                 "INSERT INTO schema_migrations (version,name,applied_at) VALUES (?,?,?)",
                 (version, name, _utc_now()),

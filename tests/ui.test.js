@@ -11,7 +11,7 @@ const types = [{ id: 'seo', label: 'Website Traffic & SEO', can_generate: true }
 const admin = { id: 'admin', name: 'Admin kiểm thử', email: 'admin@example.test', role: 'admin', allowed: types.map(t => t.id), active: 1 };
 const overview = { reports: [], report_count: 0, jobs: [], running: 0, failed: 0, sources: {}, google_connected: false, types, last_export: null, dashboard_url: 'http://localhost:8088', organization: { name: 'KinderHealth', author: '' } };
 
-async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false } = {}) {
+async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false } = {}) {
   const errors = [], requests = [], gates = new Map(); const virtualConsole = new VirtualConsole(); virtualConsole.on('jsdomError', e => errors.push(e));
   const dom = new JSDOM(html, { url: 'http://localhost/#overview', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
@@ -27,9 +27,10 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
   w.fetch = async (path, options = {}) => {
     const body = options.body && typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
     requests.push({ path, method: options.method, body }); let result; let status = 200;
-    if (!signedIn && !['/api/auth/me', '/api/auth/login'].includes(path)) { status = 401; result = { error: 'Phiên hết hạn' }; }
-    else if (path === '/api/auth/me') result = { user: signedIn ? user : null, csrf: 'csrf-test', setup_required: false };
+    if (!signedIn && !['/api/auth/me', '/api/auth/login', '/api/auth/setup'].includes(path)) { status = 401; result = { error: 'Phiên hết hạn' }; }
+    else if (path === '/api/auth/me') result = { user: signedIn ? user : null, csrf: 'csrf-test', setup_required: setupRequired };
     else if (path === '/api/auth/login') { signedIn = true; result = { user, csrf: 'csrf-test' }; }
+    else if (path === '/api/auth/setup') { setupRequired = false; result = {}; }
     else if (path === '/api/auth/logout') { signedIn = false; result = {}; }
     else if (path === '/api/overview') result = demo ? { ...overview, demo_enabled: true, demo_datasets: { seo: 'dataset-1' }, demo_sources: dataset.sources } : { ...overview, job_mode: requestMode ? 'request' : 'worker' };
     else if (path === '/api/uploads') result = [];
@@ -38,6 +39,8 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
     else if (path === '/api/datasets/dataset-1') result = makeDataset();
     else if (path === '/api/datasets/dataset-1/export') result = { job_id: 'export-1', created: true };
     else if (path === '/api/jobs/export-1' || path === '/api/jobs/export-1/process') { if (path.endsWith('/process')) processed.add('export-1'); result = { id: 'export-1', kind: 'export', status: requestMode && !processed.has('export-1') ? 'queued' : 'succeeded', dataset_id: 'dataset-1', params, steps: [] }; }
+    else if (path === '/api/google/check') result = { created: true, job_id: 'check-1' };
+    else if (path === '/api/jobs/check-1') result = { id: 'check-1', kind: 'check', status: 'succeeded', params: {}, steps: [] };
     else if (path === '/api/google') result = { configured: false, connected: false, sources: {}, assets: { ga4: '484358741', gsc: 'https://kinderhealth.vn/', keywords: 'Ranking' } };
     else if (path === '/api/jobs' || path === '/api/events' || path === '/api/reports' || path === '/api/schedules') result = [];
     else if (path === '/api/users') result = [user];
@@ -80,11 +83,62 @@ test('Login uses application credentials, keeps Google separate, and exposes nav
     assert.match(h.document.body.textContent, /Tài khoản ứng dụng và kết nối dữ liệu Google/);
     h.document.querySelector('#auth-email').value = 'admin@example.test'; h.document.querySelector('#auth-password').value = 'test-only-password';
     h.document.querySelector('#auth-form').requestSubmit();
-    await h.until(() => h.document.querySelector('h1')?.textContent === 'Tổng quan vận hành');
+    await h.until(() => h.document.querySelector('h1')?.textContent === 'Tổng quan');
     assert.equal(h.requests.filter(r => r.path === '/api/auth/login').length, 1);
     assert.match(h.document.body.textContent, /Chưa kết nối Google/);
+    assert.ok(h.document.querySelector('.overview-page'));
+    for (const route of ['#analysis', '#connections', '#activity', '#uploads', '#reports']) {
+      assert.ok(h.document.querySelector(`.overview-page a[href="${route}"]`), `missing overview link ${route}`);
+    }
     assert.equal(h.document.querySelectorAll('.nav-link').length, 9);
     assert.equal(h.w.localStorage.length, 0);
+    h.document.querySelector('[data-action="check-google"]').click();
+    await h.until(() => h.requests.some(r => r.path === '/api/google/check'));
+    await h.until(() => h.document.querySelector('#toasts').textContent.includes('Các nguồn đã được kiểm tra.'));
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('First-admin setup, password visibility, recovery modal, and logout remain available', async () => {
+  const h = await harness({ signedIn: false, setupRequired: true }); try {
+    const setupForm = h.document.querySelector('#auth-form');
+    assert.equal(setupForm.dataset.setup, 'true');
+    assert.ok(setupForm.querySelector('#auth-name[name="name"]'));
+    assert.ok(setupForm.querySelector('#auth-email[name="email"]'));
+    assert.equal(setupForm.querySelector('#auth-password[name="password"]').minLength, 12);
+    assert.equal(setupForm.querySelector('[data-action="forgot"]'), null);
+
+    const password = setupForm.querySelector('#auth-password');
+    const togglePassword = setupForm.querySelector('[data-action="toggle-password"]');
+    togglePassword.click();
+    assert.equal(password.type, 'text');
+    await h.until(() => !togglePassword.disabled);
+    togglePassword.click();
+    await h.until(() => !togglePassword.disabled);
+    assert.equal(password.type, 'password');
+
+    setupForm.querySelector('#auth-name').value = 'Admin kiểm thử';
+    setupForm.querySelector('#auth-email').value = 'admin@example.test';
+    password.value = 'test-only-password';
+    setupForm.requestSubmit();
+    await h.until(() => h.document.querySelector('#auth-form')?.dataset.setup === 'false');
+    assert.deepEqual(h.requests.find(r => r.path === '/api/auth/setup').body, {
+      name: 'Admin kiểm thử', email: 'admin@example.test', password: 'test-only-password'
+    });
+
+    h.document.querySelector('[data-action="forgot"]').click();
+    await h.until(() => h.document.querySelector('#modal').open);
+    assert.match(h.document.querySelector('#modal').textContent, /Khôi phục mật khẩu/);
+    h.document.querySelector('[data-action="close-modal"]').click();
+    assert.equal(h.document.querySelector('#modal').open, false);
+
+    h.document.querySelector('#auth-email').value = 'admin@example.test';
+    h.document.querySelector('#auth-password').value = 'test-only-password';
+    h.document.querySelector('#auth-form').requestSubmit();
+    await h.until(() => h.document.querySelector('.overview-page'));
+    h.document.querySelector('[data-action="logout"]').click();
+    await h.until(() => h.document.querySelector('#auth-form'));
+    assert.equal(h.requests.filter(r => r.path === '/api/auth/logout').length, 1);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
 });
@@ -178,7 +232,7 @@ test('Session expiry clears the previous user dataset before a different account
     assert.equal(h.document.querySelector('#analysis-results'), null);
     h.document.querySelector('#auth-email').value = 'next@example.test'; h.document.querySelector('#auth-password').value = 'test-only-password';
     h.document.querySelector('#auth-form').requestSubmit();
-    await h.until(() => h.document.querySelector('h1')?.textContent === 'Tổng quan vận hành');
+    await h.until(() => h.document.querySelector('h1')?.textContent === 'Tổng quan');
     h.w.location.hash = 'analysis'; await h.until(() => h.document.querySelector('#analysis-form'));
     assert.equal(h.document.querySelector('#export-button').disabled, true);
     assert.equal(h.document.querySelector('#analysis-results .kpi'), null);
@@ -194,7 +248,7 @@ test('A response still in flight cannot restore the previous account data after 
     await h.until(() => h.requests.some(r => r.path === '/api/datasets/dataset-1'));
     h.expireAs('viewer'); h.w.location.hash = 'overview'; await h.until(() => h.document.querySelector('#auth-form'));
     h.document.querySelector('#auth-email').value = 'next@example.test'; h.document.querySelector('#auth-password').value = 'test-only-password'; h.document.querySelector('#auth-form').requestSubmit();
-    await h.until(() => h.document.querySelector('h1')?.textContent === 'Tổng quan vận hành');
+    await h.until(() => h.document.querySelector('h1')?.textContent === 'Tổng quan');
     h.w.location.hash = 'analysis'; await h.until(() => h.document.querySelector('#analysis-form'));
     release(); release = null; await new Promise(r => setTimeout(r, 50));
     assert.equal(h.document.querySelector('#export-button').disabled, true);

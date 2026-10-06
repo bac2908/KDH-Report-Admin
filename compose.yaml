@@ -7,6 +7,9 @@ services:
     ports:
       - "127.0.0.1:8090:8090"
     environment:
+      DATA_DIR: /app/instance
+      JOB_MODE: worker
+      REPORT_SERVICE_TOKEN: ${REPORT_SERVICE_TOKEN:-}
       APP_URL: ${APP_URL:-http://127.0.0.1:8090}
       COOKIE_SECURE: ${COOKIE_SECURE:-0}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}

@@ -16,6 +16,7 @@ from .core import ROOT, TYPES, TZ, GOOD, Store, Problem, allowed, digest, filter
 from .google import Google, SourceError, LABELS
 from .jobs import Worker, enqueue, job_view, next_run, period_dates
 from .reports import import_legacy, publish, save_report, save_upload, valid_dataset
+from .report_bundle_routes import register_report_bundle_routes
 
 
 def _bootstrap_initial_admin(store, email, password):
@@ -48,13 +49,6 @@ def create_app(overrides=None):
     app.config.update(overrides or {})
     if app.config['JOB_MODE'] not in ('request', 'worker'):
         raise RuntimeError('JOB_MODE must be request or worker.')
-    if app.config['VERCEL']:
-        if not app.config['DATABASE_URL'] or not app.config['ENCRYPTION_KEY']:
-            raise RuntimeError('Vercel requires DATABASE_URL and a stable ENCRYPTION_KEY. See DEPLOY_VERCEL.md.')
-        if app.config['JOB_MODE'] != 'request' or not app.config['APP_URL'].startswith('https://'):
-            raise RuntimeError('Vercel requires JOB_MODE=request and an HTTPS APP_URL.')
-        if not app.config['COOKIE_SECURE']:
-            raise RuntimeError('Vercel requires COOKIE_SECURE=1.')
     store = Store(app.config['DATA_DIR'], app.config['DATABASE_URL'])
     _bootstrap_initial_admin(store, app.config['INITIAL_ADMIN_EMAIL'], app.config['INITIAL_ADMIN_PASSWORD'])
     google = Google(store, app.config)
@@ -115,6 +109,10 @@ def create_app(overrides=None):
     @app.before_request
     def session_and_csrf():
         g.user = None
+        # The renderer uses a backend-only Bearer token. Admin cookies neither
+        # grant access nor affect this read-only API.
+        if request.path.startswith('/api/internal/'):
+            return
         g.session_id = digest(request.cookies.get('kdh_session', ''))
         g.session = store.one('SELECT * FROM sessions WHERE id=? AND expires_at>?', (g.session_id, now()))
         if g.session:
@@ -130,10 +128,6 @@ def create_app(overrides=None):
 
     @app.after_request
     def response_headers(response):
-        if app.config['VERCEL'] and response.content_length and response.content_length > 4 * 1024 * 1024:
-            response.close()
-            response = jsonify(error='Dữ liệu phản hồi vượt 4 MB. Chọn từng nguồn hoặc khoảng ngày ngắn hơn rồi thử lại.')
-            response.status_code = 413
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['X-Frame-Options'] = 'SAMEORIGIN'
@@ -594,4 +588,5 @@ def create_app(overrides=None):
         store.event(g.user['id'],'toggle_schedule',{'schedule_id':schedule_id,'enabled':enabled})
         return jsonify(message='Đã cập nhật lịch.')
 
+    register_report_bundle_routes(app, store, require, body)
     return app

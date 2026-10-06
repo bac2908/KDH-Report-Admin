@@ -57,7 +57,7 @@ def period_dates(period, at=None):
 
 
 class Worker:
-    """Durable queue, claimed atomically by the local worker or a serverless request."""
+    """Durable queue, claimed atomically by the worker or an explicit request."""
     def __init__(self, store, google):
         self.store, self.google = store, google
         self.stopping = threading.Event()
@@ -106,8 +106,8 @@ class Worker:
     def expire_stale(self):
         if self.google.config.get('JOB_MODE') != 'request':
             return
-        # Greater than the configured 300s Vercel function lifetime. A cold start
-        # must never interrupt another instance's active request.
+        # Allow a grace period beyond the request's 220s processing budget.
+        # Another instance must not interrupt an active request.
         cutoff = (datetime.now(timezone.utc) - timedelta(minutes=6)).isoformat(timespec='microseconds')
         self.store.execute("UPDATE jobs SET status='interrupted',finished_at=?,error=? WHERE status='running' AND started_at<?",
                            (now(), 'Lần chạy bị gián đoạn hoặc quá thời gian máy chủ. Bấm Thử lại để chạy lại.', cutoff))

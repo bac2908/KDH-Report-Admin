@@ -1,12 +1,31 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from kdh.core import Store
 from kdh.platform_data import DEFAULT_CLIENT_ID, PlatformData
+from kdh.migrations import MIGRATIONS
 
 
 class PlatformDataTests(unittest.TestCase):
+    def test_upgrade_from_v1_preserves_existing_data_and_does_not_reapply(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch('kdh.migrations.MIGRATIONS',MIGRATIONS[:1]):
+                old=Store(folder)
+                old.execute('''INSERT INTO report_bundles
+                    (id,bundle_key,revision,client_id,name,status,start_date,end_date,created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?)''',('old-row','rpt_existing',1,DEFAULT_CLIENT_ID,'Old final','final','2026-09-01','2026-09-28','2026-10-01T00:00:00Z'))
+                old.execute('INSERT INTO settings (key,value) VALUES (?,?)',('migration_sentinel','"keep-me"'))
+                before=old.one('SELECT * FROM report_bundles WHERE id=?',('old-row',))
+            upgraded=Store(folder)
+            after=upgraded.one('SELECT * FROM report_bundles WHERE id=?',('old-row',))
+            self.assertIsNone(after.pop('snapshot_payload'))
+            self.assertEqual(after,before)
+            self.assertEqual(upgraded.setting('migration_sentinel'),'keep-me')
+            Store(folder)
+            self.assertEqual(upgraded.one('SELECT COUNT(*) AS n FROM schema_migrations')['n'],2)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(self.tmp.name)

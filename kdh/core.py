@@ -92,11 +92,11 @@ def load_config():
 
           <project>/instance
 
-    Vercel:
+    Docker:
 
-        - DATABASE_URL hoặc DATABASE_POSTGRES_URL trỏ PostgreSQL để lưu dữ liệu lâu dài.
+        - DATA_DIR=/app/instance được lưu trong volume admin-data.
 
-        - DATA_DIR=/tmp/kdh chỉ dùng cho thư mục tạm.
+        - DATABASE_URL tùy chọn cho deployment dùng PostgreSQL.
 
     """
 
@@ -136,40 +136,31 @@ def load_config():
 
                 )
 
-    vercel = os.getenv('VERCEL') == '1'
-
-    # Vercel Neon integration with the custom prefix `DATABASE` creates
-    # DATABASE_POSTGRES_URL instead of DATABASE_URL. Prefer DATABASE_URL
-    # when it exists, otherwise fall back to the Neon integration URL.
-    database_url = (
-        os.getenv('DATABASE_URL')
-        or os.getenv('DATABASE_POSTGRES_URL')
-        or ''
-    ).strip()
+    database_url = os.getenv('DATABASE_URL', '').strip()
 
     return {
-
-        'VERCEL': vercel,
 
         'DATABASE_URL': database_url,
 
         'ENCRYPTION_KEY': os.getenv('ENCRYPTION_KEY', '').strip(),
 
-        'JOB_MODE': os.getenv('JOB_MODE', 'request' if vercel else 'worker'),
+        'JOB_MODE': os.getenv('JOB_MODE', 'worker'),
 
         'CRON_SECRET': os.getenv('CRON_SECRET', ''),
+
+        'REPORT_SERVICE_TOKEN': os.getenv('REPORT_SERVICE_TOKEN', ''),
 
         # Quan trọng:
 
         # Local -> ROOT/instance
 
-        # Vercel -> /tmp chỉ là thư mục tạm; Store dùng DATABASE_URL.
+        # Docker -> /app/instance trong volume bền vững.
 
         'DATA_DIR': os.getenv(
 
             'DATA_DIR',
 
-            '/tmp/kdh' if vercel else str(ROOT / 'instance')
+            str(ROOT / 'instance')
 
         ),
 
@@ -183,7 +174,7 @@ def load_config():
 
         'COOKIE_SECURE': (
 
-            os.getenv('COOKIE_SECURE', '1' if vercel else '0') == '1'
+            os.getenv('COOKIE_SECURE', '0') == '1'
 
         ),
 
@@ -291,7 +282,7 @@ def load_config():
 
         ),
 
-        'MAX_CONTENT_LENGTH': 4 * 1024 * 1024 if vercel else 5 * 1024 * 1024,
+        'MAX_CONTENT_LENGTH': 5 * 1024 * 1024,
 
         'TESTING': False,
 
@@ -774,10 +765,6 @@ class Store:
     def save_artifact(self, job_id, content):
 
         # Keep small Excel files alongside their durable job/dataset records.
-
-        if self.postgres and len(content) > 4 * 1024 * 1024:
-
-            raise Problem('File Excel vượt 4 MB. Hãy chọn khoảng ngày ngắn hơn để tải trên Vercel.')
 
         self.execute('INSERT INTO artifacts VALUES (?,?) ON CONFLICT(job_id) DO UPDATE SET content=excluded.content',
 

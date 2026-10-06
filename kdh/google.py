@@ -30,7 +30,7 @@ class SourceError(Exception):
 
 def call(method, url, **kwargs):
     deadline = REQUEST_DEADLINE.get()
-    # Reserve a full network timeout and time to persist results before Vercel stops us.
+    # Reserve a full network timeout and time to persist results before the deadline.
     if deadline is not None and deadline - time.monotonic() < 60:
         raise SourceError('timeout', 'Đã hết thời gian xử lý của lần chạy này. Chọn từng nguồn hoặc khoảng ngày ngắn hơn rồi thử lại.')
     try:
