@@ -1,10 +1,10 @@
 import { api, setCsrf } from './api.js';
 import { esc, date, time, num, icon, badge, empty, button, notice, modal, toast, table, sourceNames, kindNames, roles } from './ui.js';
-import { pages, connectionPlatforms, loginView, shell, overviewView, clientsView, assetsView, syncView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, datasetsView, datasetsTable, datasetDetailView, datasetDetailNotFoundView, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, skeletonView, jobProgress, dataTable } from './views.js';
+import { pages, connectionPlatforms, loginView, shell, overviewView, clientsView, assetsView, syncView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, datasetsView, datasetsTable, datasetDetailView, datasetDetailNotFoundView, reportBuilderView, reportBuilderPeriodWarning, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, skeletonView, jobProgress, dataTable } from './views.js';
 
-const state = { user: null, overview: null, page: 'overview', generation: 0, authEpoch: 0, dataset: null, datasetDetail: null, datasetDetailTab: 'summary', datasets: [], draft: null, job: null, tab: 'summary', tablePage: 0, uploads: [], reports: [], users: [], schedules: [], reportFilter: {}, jobFilter: '' };
+const state = { user: null, overview: null, page: 'overview', generation: 0, authEpoch: 0, dataset: null, datasetDetail: null, datasetDetailTab: 'summary', datasets: [], reportBuilder: null, draft: null, job: null, tab: 'summary', tablePage: 0, uploads: [], reports: [], users: [], schedules: [], reportFilter: {}, jobFilter: '' };
 const $ = s => document.querySelector(s);
-function clearSessionData() { state.authEpoch++; state.generation++; state.dataset = null; state.datasetDetail = null; state.datasetDetailTab = 'summary'; state.datasets = []; state.draft = null; state.job = null; state.overview = null; state.uploads = []; state.reports = []; state.users = []; state.schedules = []; state.jobs = []; state.events = []; state.connection = null; state.settings = null; state.reportFilter = {}; state.jobFilter = ''; state.tab = 'summary'; state.tablePage = 0; $('#modal').close(); $('#modal').replaceChildren(); }
+function clearSessionData() { state.authEpoch++; state.generation++; state.dataset = null; state.datasetDetail = null; state.datasetDetailTab = 'summary'; state.datasets = []; state.reportBuilder = null; state.draft = null; state.job = null; state.overview = null; state.uploads = []; state.reports = []; state.users = []; state.schedules = []; state.jobs = []; state.events = []; state.connection = null; state.settings = null; state.reportFilter = {}; state.jobFilter = ''; state.tab = 'summary'; state.tablePage = 0; $('#modal').close(); $('#modal').replaceChildren(); }
 function today() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
 function offset(day, n) { const d = new Date(day + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
 function period(kind) { const t = today(); if (kind === 'this_month') return { start: t.slice(0, 8) + '01', end: t }; if (kind === 'previous_month') { const end = offset(t.slice(0, 8) + '01', -1); return { start: end.slice(0, 8) + '01', end }; } const end = offset(t, -1); return { start: offset(end, kind === 'last7' ? -6 : -27), end }; }
@@ -14,12 +14,40 @@ function footer() { return `<footer class="page-footer"><span>KINDERHEALTH · B�
 function errorInModal(err) { const b = $('#modal .modal-body'); if (b && $('#modal').open) { b.querySelector('.modal-error')?.remove(); const e = document.createElement('div'); e.className = 'modal-error'; e.innerHTML = notice(err.message, 'red'); b.append(e); } else toast(err.message, true); }
 async function handleError(err) { if (err.cancelled) return; if (err.status === 401 && state.user) { clearSessionData(); state.user = null; setCsrf(''); $('#modal').close(); history.replaceState(null, '', '#overview'); $('#app').innerHTML = loginView(false, 'Phiên hết hạn. Vui lòng đăng nhập lại.'); } else errorInModal(err); }
 
+async function discoverReferencedDatasets(read, version) {
+    const [jobs, reports] = await Promise.all([read('/jobs'), read('/reports')]);
+    const references = new Map();
+    for (const item of [...jobs, ...reports]) {
+        if (typeof item.dataset_id !== 'string' || !item.dataset_id) continue;
+        const timestamp = Date.parse(item.created_at || '') || 0;
+        references.set(item.dataset_id, Math.max(references.get(item.dataset_id) || 0, timestamp));
+    }
+    const ids = [...references].sort((a, b) => b[1] - a[1]).slice(0, 50).map(([id]) => id);
+    const loaded = new Array(ids.length);
+    const loadErrors = [];
+    let next = 0;
+    const loadWorker = async () => {
+        while (next < ids.length) {
+            const index = next++;
+            try {
+                loaded[index] = await read('/datasets/' + encodeURIComponent(ids[index]));
+            } catch (err) {
+                if (version !== state.generation) throw err;
+                if (err.status === 404) loadErrors.push({ id: ids[index], message: err.message });
+                else throw err;
+            }
+        }
+    };
+    await Promise.all(Array.from({ length: Math.min(6, ids.length) }, loadWorker));
+    return { datasets: loaded.filter(Boolean), loadErrors };
+}
+
 async function start() { try { const session = await api('/auth/me'); state.user = session.user; setCsrf(session.csrf); if (!state.user) { $('#app').innerHTML = loginView(session.setup_required); return; } state.overview = await api('/overview'); state.draft ??= { report_type: state.overview.types.find(t => t.can_generate)?.id || 'seo', ...period('last28'), demo: !!state.overview.demo_enabled, compare: !!state.overview.demo_enabled, exclude_products: false, upload_id: '', previous_upload_id: '' }; await navigate(); } catch (err) { $('#app').innerHTML = `<main class="initial-loading">${empty('Không thể mở ứng dụng', err.message, button('Thử lại', 'restart', 'primary'))}</main>`; } }
 async function navigate() {
     if (!state.user) return; const version = ++state.generation; const parts = location.hash.slice(1).split('?'); const route = parts[0].split('/'); const oauthResult = new URLSearchParams(parts[1]).get('oauth'); state.page = pages[route[0]] ? route[0] : 'overview'; state.connectionPlatform = state.page === 'connections' && connectionPlatforms[route[1]] ? route[1] : state.page === 'connections' && oauthResult ? 'google' : null; const page = state.page; $('#app').innerHTML = shell(state.user, state.overview, page, state.connectionPlatform); $('#content').innerHTML = '<div class="empty"><span class="spinner"></span><p>Đang tải dữ liệu…</p></div>'; try {
         const read = async path => { const result = await api(path); if (version !== state.generation) throw new Error('Đã chuyển màn hình hoặc phiên đăng nhập.'); return result; };
         let html = '';
-        if (['connections', 'assets', 'users', 'settings', 'schedules'].includes(page) && state.user.role !== 'admin') throw new Error('Màn hình này chỉ dành cho quản trị viên.');
+        if (['connections', 'assets', 'users', 'settings', 'schedules', 'report-builder'].includes(page) && state.user.role !== 'admin') throw Object.assign(new Error('Màn hình này chỉ dành cho quản trị viên.'), { status: 403 });
         if (page === 'overview') { state.overview = await read('/overview'); html = overviewView(state.overview, state.user); }
         if (page === 'clients') html = clientsView();
         if (page === 'datasets') {
@@ -41,35 +69,47 @@ async function navigate() {
                 }
             }
             else {
-                const [jobs, reports] = await Promise.all([read('/jobs'), read('/reports')]);
-                const references = new Map();
-                for (const item of [...jobs, ...reports]) {
-                    if (typeof item.dataset_id !== 'string' || !item.dataset_id) continue;
-                    const timestamp = Date.parse(item.created_at || '') || 0;
-                    references.set(item.dataset_id, Math.max(references.get(item.dataset_id) || 0, timestamp));
-                }
-                const ids = [...references].sort((a, b) => b[1] - a[1]).slice(0, 50).map(([id]) => id);
-                const loaded = new Array(ids.length);
-                const loadErrors = [];
-                let next = 0;
-                const loadWorker = async () => {
-                    while (next < ids.length) {
-                        const index = next++;
-                        try {
-                            loaded[index] = await read('/datasets/' + encodeURIComponent(ids[index]));
-                        } catch (err) {
-                            if (version !== state.generation) throw err;
-                            if (err.status === 404) loadErrors.push({ id: ids[index], message: err.message });
-                            else throw err;
-                        }
-                    }
-                };
-                await Promise.all(Array.from({ length: Math.min(6, ids.length) }, loadWorker));
-                state.datasets = loaded.filter(Boolean);
-                html = datasetsView(state.datasets, state.overview.types, loadErrors);
+                const discovered = await discoverReferencedDatasets(read, version);
+                state.datasets = discovered.datasets;
+                html = datasetsView(state.datasets, state.overview.types, discovered.loadErrors);
             }
         }
-        if (page === 'report-builder') html = skeletonView(page);
+        if (page === 'report-builder') {
+            const requestedDatasetId = new URLSearchParams(parts[1]).get('dataset');
+            const discovered = await discoverReferencedDatasets(read, version);
+            let datasets = discovered.datasets;
+            let preselectionError = '';
+            if (requestedDatasetId && !datasets.some(item => item.id === requestedDatasetId)) {
+                try {
+                    datasets = [...datasets, await read('/datasets/' + encodeURIComponent(requestedDatasetId))];
+                } catch (err) {
+                    if (version !== state.generation) throw err;
+                    if (err.status === 404) preselectionError = 'Dataset được yêu cầu không tìm thấy.';
+                    else throw err;
+                }
+            }
+            if (!state.reportBuilder) {
+                const defaultPeriod = period('last28');
+                state.reportBuilder = {
+                    step: 1,
+                    form: { name: '', start_date: defaultPeriod.start, end_date: defaultPeriod.end, compare_start_date: '', compare_end_date: '' },
+                    selectedDatasetId: '',
+                    datasets: [],
+                    loadErrors: [],
+                    preselectionError: '',
+                    saveResult: null
+                };
+            }
+            if (requestedDatasetId) {
+                const found = datasets.some(item => item.id === requestedDatasetId);
+                state.reportBuilder.selectedDatasetId = found ? requestedDatasetId : '';
+                if (found) state.reportBuilder.step = 2;
+            }
+            state.reportBuilder.datasets = datasets;
+            state.reportBuilder.loadErrors = discovered.loadErrors;
+            state.reportBuilder.preselectionError = preselectionError;
+            html = reportBuilderView(state.reportBuilder, state.overview.types);
+        }
         if (page === 'assets') { state.connection = await read('/google'); html = assetsView(state.connection); }
         if (page === 'sync') { const sources = await Promise.all([read('/jobs'), state.user.role === 'admin' ? read('/google') : Promise.resolve(null)]); state.jobs = sources[0]; state.connection = sources[1]; html = syncView(state.jobs, state.overview, state.user, state.connection); }
         if (page === 'connections') { state.connection = await read('/google'); html = state.connectionPlatform === 'google' ? connectionsView(state.connection) : state.connectionPlatform ? platformDetailView(state.connectionPlatform) : platformConnectionsView(state.connection); if (oauthResult) { html = notice(oauthResult === 'success' ? 'Đã kết nối Google. Các nguồn đang được kiểm tra.' : oauthResult === 'denied' ? 'Bạn đã hủy cấp quyền Google.' : 'Kết nối chưa hoàn tất. Hãy thử kết nối lại.', oauthResult === 'success' ? 'green' : 'amber') + html; history.replaceState(null, '', '#connections/google'); } }
@@ -93,6 +133,28 @@ async function navigate() {
 function readDraft() { const form = $('#analysis-form'); if (!form) return; const data = new FormData(form); state.draft = { report_type: data.get('report_type'), start: data.get('start'), end: data.get('end'), compare: data.has('compare'), demo: data.has('demo'), exclude_products: data.has('exclude_products'), upload_id: data.get('upload_id') || '', previous_upload_id: data.get('previous_upload_id') || '' }; }
 function updateFilterState() { const exportButton = $('#export-button'); if (exportButton) exportButton.disabled = !state.dataset?.exportable || isDirty() || !!state.job; const save = $('#save-report-button'); if (save) save.disabled = isDirty() || !!state.job; $('#dirty-note')?.classList.toggle('show', isDirty()); const compare = $('#comparison-period'); if (compare) { const p = state.draft; const days = Math.round((Date.parse(p.end) - Date.parse(p.start)) / 86400000) + 1; compare.textContent = p.compare && days > 0 ? `Kỳ so sánh dự kiến: ${date(offset(p.start, -days))} → ${date(offset(p.start, -1))}` : 'Múi giờ báo cáo: Asia/Ho_Chi_Minh · Kỳ trước có cùng số ngày.'; } }
 function renderAnalysis() { if (state.page !== 'analysis' || !state.user) return; $('#content').innerHTML = analysisView(state, state.overview.types, state.user) + footer(); updateFilterState(); if (state.job) $('#job-progress').innerHTML = jobProgress(state.job); }
+function readReportBuilderForm() {
+    const form = $('#report-builder-form');
+    if (!form || !state.reportBuilder) return;
+    const data = new FormData(form);
+    state.reportBuilder.form = {
+        name: String(data.get('name') || ''),
+        start_date: String(data.get('start_date') || ''),
+        end_date: String(data.get('end_date') || ''),
+        compare_start_date: String(data.get('compare_start_date') || ''),
+        compare_end_date: String(data.get('compare_end_date') || '')
+    };
+}
+function renderReportBuilder() {
+    if (state.page === 'report-builder' && state.reportBuilder) $('#content').innerHTML = reportBuilderView(state.reportBuilder, state.overview.types) + footer();
+}
+function validateReportBuilderForm() {
+    const form = state.reportBuilder.form;
+    if (!form.name.trim() || form.name.trim().length > 200) throw new Error('Tên báo cáo cần từ 1 đến 200 ký tự.');
+    if (!form.start_date || !form.end_date || form.start_date > form.end_date) throw new Error('Hãy nhập kỳ dữ liệu hợp lệ.');
+    if (!!form.compare_start_date !== !!form.compare_end_date) throw new Error('Hãy nhập đủ ngày bắt đầu và kết thúc cho kỳ so sánh.');
+    if (form.compare_start_date && form.compare_start_date > form.compare_end_date) throw new Error('Ngày bắt đầu kỳ so sánh phải trước hoặc bằng ngày kết thúc.');
+}
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function waitJob(id, onProgress) {
@@ -164,6 +226,34 @@ async function act(action, el) {
         case 'table-next': state.tablePage++; if (state.page === 'datasets' && state.datasetDetail) $('#content').innerHTML = datasetDetailView(state.datasetDetail, state.overview.types, state.datasetDetailTab, state.tablePage) + footer(); else $('#analysis-results').innerHTML = analysisResults(state); break;
         case 'export-modal': exportModal(); break;
         case 'dataset-detail-export': exportModal(state.datasetDetail); break;
+        case 'report-builder-next': readReportBuilderForm(); validateReportBuilderForm(); state.reportBuilder.step = 2; renderReportBuilder(); break;
+        case 'report-builder-back': readReportBuilderForm(); state.reportBuilder.step = 1; renderReportBuilder(); break;
+        case 'report-builder-save': {
+            readReportBuilderForm();
+            validateReportBuilderForm();
+            const builder = state.reportBuilder;
+            const selected = builder.datasets.find(dataset => dataset.id === builder.selectedDatasetId);
+            if (!selected) throw new Error('Hãy chọn một Dataset có thể đọc được.');
+            const params = selected.params || {};
+            if ((params.start && params.start !== builder.form.start_date) || (params.end && params.end !== builder.form.end_date)) throw new Error('Kỳ báo cáo phải khớp chính xác với kỳ của Dataset.');
+            if (builder.form.compare_start_date && params.compare === true && ((params.previous_start && params.previous_start !== builder.form.compare_start_date) || (params.previous_end && params.previous_end !== builder.form.compare_end_date))) throw new Error('Kỳ so sánh phải khớp chính xác với Dataset.');
+            const payload = {
+                client_id: 'client_kinderhealth',
+                name: builder.form.name.trim(),
+                start_date: builder.form.start_date,
+                end_date: builder.form.end_date,
+                default_section: 'overview',
+                sections: [{ key: 'overview', dataset_id: selected.id }]
+            };
+            if (builder.form.compare_start_date) {
+                payload.compare_start_date = builder.form.compare_start_date;
+                payload.compare_end_date = builder.form.compare_end_date;
+            }
+            builder.saveResult = await api('/report-bundles', 'POST', payload);
+            renderReportBuilder();
+            toast('Đã lưu bản nháp báo cáo.');
+            break;
+        }
         case 'export-confirm': await createExport(id); break;
         case 'save-report': if (isDirty() || state.job) throw new Error('Áp dụng bộ lọc trước khi lưu.'); { const r = await api('/datasets/' + state.dataset.id + '/save', 'POST', {}); toast('Đã lưu bản nháp HTML.'); location.hash = 'reports'; break; }
         case 'import-reports': { const r = await api('/reports/import', 'POST', {}); toast(`Đã kiểm tra và nhập ${r.report_ids.length} báo cáo. Bản trùng được giữ nguyên.`); await navigate(); break; }
@@ -192,6 +282,7 @@ document.addEventListener('submit', async event => {
         const data = new FormData(form), fields = Object.fromEntries(data.entries());
         if (form.id === 'auth-form') { if (form.dataset.setup === 'true') { await api('/auth/setup', 'POST', fields); $('#app').innerHTML = loginView(false); toast('Đã tạo tài khoản. Hãy đăng nhập để bắt đầu.'); } else { const r = await api('/auth/login', 'POST', fields); clearSessionData(); state.user = r.user; setCsrf(r.csrf); await start(); } }
         if (form.id === 'analysis-form') await runAnalysis();
+        if (form.id === 'report-builder-form') { readReportBuilderForm(); validateReportBuilderForm(); state.reportBuilder.step = 2; renderReportBuilder(); }
         if (form.id === 'report-filter') { state.reportFilter = fields; $('#content').innerHTML = reportsView(state.reports, state.overview.types, state.user, state.reportFilter) + footer(); }
         if (form.id === 'upload-form') { await api('/uploads', 'POST', data); toast('CSV hợp lệ, đã lưu dữ liệu.'); await navigate(); }
         if (form.id === 'settings-form') { await api('/settings', 'PATCH', fields); toast('Đã lưu cài đặt.'); }
@@ -200,8 +291,9 @@ document.addEventListener('submit', async event => {
     } catch (err) { if (form.id === 'auth-form') { form.querySelector('.auth-error')?.remove(); const e = document.createElement('p'); e.className = 'auth-error'; e.setAttribute('role', 'alert'); e.textContent = err.message; form.querySelector('button[type=submit]').before(e); } else await handleError(err); } finally { if (btn?.isConnected) { btn.disabled = false; btn.innerHTML = text; updateFilterState(); } }
 });
 
-document.addEventListener('change', event => { const el = event.target; if (el.closest('#analysis-form')) { readDraft(); if (el.name === 'report_type' || el.name === 'compare' || el.name === 'demo') renderAnalysis(); else updateFilterState(); } if (el.id === 'job-status-filter') { state.jobFilter = el.value; $('#content').innerHTML = activityView(state.jobs, state.events, state.user, state.jobFilter) + footer(); } if (el.id === 'csv-file') { const name = el.files?.[0]?.name || ''; const dates = name.match(/\d{4}-\d{1,2}-\d{1,2}/g); if (dates?.length >= 2) { const iso = d => d.split('-').map((s, i) => i ? s.padStart(2, '0') : s).join('-'); $('#csv-start').value = iso(dates[0]); $('#csv-end').value = iso(dates[1]); } } });
+document.addEventListener('change', event => { const el = event.target; if (el.closest('#analysis-form')) { readDraft(); if (el.name === 'report_type' || el.name === 'compare' || el.name === 'demo') renderAnalysis(); else updateFilterState(); } if (el.matches('[name="report-builder-dataset"]')) { state.reportBuilder.selectedDatasetId = el.value; renderReportBuilder(); } if (el.id === 'job-status-filter') { state.jobFilter = el.value; $('#content').innerHTML = activityView(state.jobs, state.events, state.user, state.jobFilter) + footer(); } if (el.id === 'csv-file') { const name = el.files?.[0]?.name || ''; const dates = name.match(/\d{4}-\d{1,2}-\d{1,2}/g); if (dates?.length >= 2) { const iso = d => d.split('-').map((s, i) => i ? s.padStart(2, '0') : s).join('-'); $('#csv-start').value = iso(dates[0]); $('#csv-end').value = iso(dates[1]); } } });
 document.addEventListener('input', event => { if (event.target.closest('#analysis-form')) { readDraft(); updateFilterState(); } });
+document.addEventListener('input', event => { if (event.target.closest('#report-builder-form')) readReportBuilderForm(); });
 document.addEventListener('input', event => { if (event.target.closest('#dataset-filters')) updateDatasetTable(); });
 document.addEventListener('change', event => { if (event.target.closest('#dataset-filters')) updateDatasetTable(); });
 function updateDatasetTable() {

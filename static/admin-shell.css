@@ -889,6 +889,333 @@ body:has(.workspace) {
     }
 }
 
+.report-builder-page {
+    display: grid;
+    gap: 20px;
+}
+
+.report-builder-stepper {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.report-builder-stepper li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: #475569;
+    font-size: 13px;
+}
+
+.report-builder-stepper li > span {
+    display: grid;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 50%;
+    background: #eef3fb;
+    color: #475569;
+    font-weight: 800;
+}
+
+.report-builder-stepper li.active {
+    border-color: #a9c6ff;
+    background: #f2f7ff;
+    color: #142b4a;
+}
+
+.report-builder-stepper li.active strong,
+.report-builder-stepper li.complete strong {
+    color: #142b4a;
+    font-weight: 750;
+}
+
+.report-builder-stepper li.active > span,
+.report-builder-stepper li.complete > span {
+    background: #1769ff;
+    color: #fff;
+}
+
+.report-builder-stepper li.complete {
+    color: #142b4a;
+}
+
+.report-builder-stepper li.upcoming,
+.report-builder-stepper li.disabled {
+    color: #475569;
+}
+
+.report-builder-stepper li.upcoming > span,
+.report-builder-stepper li.disabled > span {
+    background: #eef3fb;
+    color: #475569;
+}
+
+.report-builder-stepper li.disabled {
+    background: #f7f9fc;
+}
+
+.report-builder-card {
+    display: grid;
+    gap: 22px;
+    padding: 26px;
+}
+
+.report-builder-card-heading h2 {
+    margin: 5px 0 6px;
+    font-size: 20px;
+}
+
+.report-builder-card-heading p,
+.report-builder-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.report-builder-form {
+    display: grid;
+    gap: 22px;
+}
+
+.report-builder-name {
+    max-width: 680px;
+}
+
+.report-builder-dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.report-builder-comparison {
+    display: grid;
+    gap: 14px;
+    margin: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+}
+
+.report-builder-comparison legend {
+    padding: 0 6px;
+    font-weight: 700;
+}
+
+.report-builder-comparison .form-note {
+    margin: 0;
+}
+
+.report-builder-flow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 15px 18px;
+    border: 1px solid #dce8ff;
+    border-radius: 12px;
+    background: #f5f8ff;
+    color: #35527d;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.report-builder-flow > svg {
+    color: var(--primary);
+}
+
+.report-builder-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+
+.report-builder-actions .form-note {
+    margin: 0;
+}
+
+.report-builder-review {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.report-builder-review > div {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 13px 15px;
+    border-radius: 10px;
+    background: #f6f8fb;
+}
+
+.report-builder-review span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.report-builder-review strong {
+    overflow-wrap: anywhere;
+    font-size: 13px;
+}
+
+.report-builder-dataset-list {
+    display: grid;
+    gap: 10px;
+    max-height: 560px;
+    overflow: auto;
+    padding: 2px;
+}
+
+.report-builder-dataset {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.report-builder-dataset:hover {
+    border-color: #a9c6ff;
+}
+
+.report-builder-dataset.selected {
+    border-color: var(--primary);
+    background: #f5f8ff;
+    box-shadow: 0 0 0 2px rgb(23 105 255 / 9%);
+}
+
+.report-builder-dataset > input {
+    flex: 0 0 auto;
+    margin-top: 3px;
+    accent-color: var(--primary);
+}
+
+.report-builder-dataset-body {
+    display: grid;
+    flex: 1;
+    gap: 10px;
+    min-width: 0;
+}
+
+.report-builder-dataset-heading,
+.report-builder-dataset-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.report-builder-dataset-heading {
+    justify-content: space-between;
+}
+
+.report-builder-dataset-heading strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.report-builder-dataset-meta {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.report-builder-dataset-meta > span {
+    padding-right: 10px;
+    border-right: 1px solid var(--line);
+}
+
+.report-builder-dataset-meta > span:last-child {
+    border: 0;
+}
+
+.report-builder-empty {
+    padding: 18px;
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+}
+
+.report-builder-notices {
+    display: grid;
+    gap: 8px;
+}
+
+.report-builder-saved {
+    display: grid;
+    gap: 12px;
+}
+
+.report-builder-saved dl {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 8px 16px;
+    margin: 0;
+}
+
+.report-builder-saved dt {
+    color: var(--muted);
+}
+
+.report-builder-saved dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+    .report-builder-stepper li {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 760px) {
+    .report-builder-page {
+        gap: 14px;
+    }
+
+    .report-builder-stepper {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .report-builder-card {
+        gap: 18px;
+        padding: 18px;
+    }
+
+    .report-builder-dates,
+    .report-builder-review {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .report-builder-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .report-builder-actions .btn {
+        justify-content: center;
+        width: 100%;
+    }
+}
+
 .workspace .spinner {
     border-color: #dbeafe;
     border-top-color: var(--admin-blue);

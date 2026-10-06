@@ -26,6 +26,10 @@ Migration **2 — `report_bundle_snapshots`** thêm `report_bundles.snapshot_pay
 
 Mặc định Internal API trả **revision lớn nhất có trạng thái provisional/final**, không phải revision draft mới nhất. `?revision=N` chỉ đọc revision N nếu đã xuất bản. Xuất bản lại một revision cũ không thay thứ tự mặc định.
 
+## Report Builder trong Admin
+
+Report Builder hiện hỗ trợ nhập thông tin báo cáo và chọn một Dataset đã lưu để tạo bản nháp. Dataset có thể chọn được phát hiện từ `dataset_id` trong `/api/jobs` và `/api/reports`, sau đó đọc qua endpoint chi tiết `/api/datasets/{dataset_id}`; không có API liệt kê Dataset. Kỳ báo cáo phải khớp kỳ có trong snapshot. Admin tạo revision đầu tiên bằng `POST /api/report-bundles`; backend gán trạng thái `draft`. Khách hàng `client_kinderhealth` được chọn nội bộ, không qua bộ chọn khách hàng trên giao diện. Cấu hình section nâng cao, xem trước và xuất bản chưa thuộc luồng UI này.
+
 ## Xác thực và endpoint
 
 Các endpoint Admin dùng cookie đăng nhập hiện có; mọi mutation cần `X-KDH-Request: 1` và `X-CSRF-Token` lấy từ đăng nhập hoặc `/api/auth/me`. Chỉ role `admin` đang hoạt động được quản lý bundle. Service kiểm tra lại quyền và phiên ngay trong giao dịch ghi.

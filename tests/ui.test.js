@@ -11,7 +11,7 @@ const types = [{ id: 'seo', label: 'Website Traffic & SEO', can_generate: true }
 const admin = { id: 'admin', name: 'Admin kiểm thử', email: 'admin@example.test', role: 'admin', allowed: types.map(t => t.id), active: 1 };
 const overview = { reports: [], report_count: 0, jobs: [], running: 0, failed: 0, sources: {}, google_connected: false, types, last_export: null, dashboard_url: 'http://localhost:8088', organization: { name: 'KinderHealth', author: '' } };
 
-async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false, googleConfigured = false, googleConnected = false, googleSources = {}, jobs = [], uploads = [], reports = [], datasetRecords = {}, datasetErrors = {} } = {}) {
+async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false, googleConfigured = false, googleConnected = false, googleSources = {}, jobs = [], uploads = [], reports = [], datasetRecords = {}, datasetErrors = {}, reportBundleResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleError = null } = {}) {
   const errors = [], requests = [], gates = new Map(); const virtualConsole = new VirtualConsole(); virtualConsole.on('jsdomError', e => errors.push(e));
   const dom = new JSDOM(html, { url: 'http://localhost/#overview', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
@@ -56,6 +56,10 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
     else if (path === '/api/google') result = { configured: googleConfigured, connected: providerConnected, email: providerConnected ? 'connected@example.test' : null, connected_at: providerConnected ? '2026-09-01T00:00:00Z' : null, checked_at: null, sources: googleSources, assets: { ga4: 'property-config', gsc: 'property-url', keywords: 'sheet-config' } };
     else if (path === '/api/jobs') result = jobs;
     else if (path === '/api/reports') result = reports;
+    else if (path === '/api/report-bundles' && options.method === 'POST') {
+      if (reportBundleError) { status = reportBundleError.status; result = { error: reportBundleError.message }; }
+      else result = reportBundleResult;
+    }
     else if (path === '/api/events' || path === '/api/schedules') result = [];
     else if (path === '/api/users') result = [user];
     else if (path === '/api/settings') result = { organization: { name: 'KinderHealth', author: '' }, timezone: 'Asia/Ho_Chi_Minh', versions: 'Giữ toàn bộ phiên bản', oauth_configured: false };
@@ -379,6 +383,7 @@ test('Primary navigation is complete and provider routes remain reachable withou
     assert.equal(viewer.document.querySelector('.nav-link[href="#connections"]'), null);
     assert.equal(viewer.document.querySelector('.nav-link[href="#assets"]'), null);
     assert.equal(viewer.document.querySelector('.nav-link[href="#users"]'), null);
+    assert.equal(viewer.document.querySelector('.nav-link[href="#report-builder"]'), null);
     viewer.w.location.hash = 'users'; await viewer.until(() => viewer.document.body.textContent.includes('Màn hình này chỉ dành cho quản trị viên.'));
     assert.equal(viewer.requests.some(r => r.path === '/api/users'), false);
   } finally { viewer.close(); }
@@ -395,9 +400,17 @@ test('Dataset and Report Builder routes show safe empty states without API calls
     assert.deepEqual(h.requests.filter(request => ['/api/jobs', '/api/reports'].includes(request.path)).sort(), ['/api/jobs', '/api/reports'].map(path => ({ path, method: 'GET', body: undefined })).sort());
     assert.equal(h.requests.some(request => request.path === '/api/datasets' || request.path.startsWith('/api/datasets/')), false);
     h.w.location.hash = 'report-builder';
-    await h.until(() => h.document.querySelector('.nav-link[href="#report-builder"].active') && h.document.querySelector('#content h1'));
-    assert.match(h.document.querySelector('#content').textContent, /Report Builder chưa khả dụng/);
+    await h.until(() => h.document.querySelector('.nav-link[href="#report-builder"].active') && h.document.querySelector('#report-builder-form'));
+    assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Thông tin báo cáo');
+    assert.equal(h.document.querySelector('.report-builder-stepper li.active > span').textContent.trim(), '1');
+    h.document.querySelector('[name="name"]').value = 'Empty-state test';
+    h.document.querySelector('[data-action="report-builder-next"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-empty'));
+    assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Chọn Dataset');
+    assert.equal(h.document.querySelector('.report-builder-stepper li.complete strong').textContent, 'Thông tin báo cáo');
+    assert.match(h.document.querySelector('#content').textContent, /Chưa có Dataset/);
     assert.equal(h.requests.slice(before.length).some(request => request.path === '/api/datasets' || request.path.startsWith('/api/datasets/')), false);
+    assert.equal(h.requests.some(request => request.path === '/api/report-bundles'), false);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
 });
@@ -670,4 +683,73 @@ test('A response still in flight cannot restore the previous account data after 
     assert.equal(h.document.querySelector('#analysis-results .kpi'), null);
     assert.match(h.document.querySelector('#applied-period').textContent, /Chưa có bộ lọc được áp dụng/);
   } finally { release?.(); h.close(); }
+});
+
+test('Report Builder discovers real Datasets, preselects by query, and saves only a draft', async () => {
+  const dataset = {
+    id: 'dataset-real-1',
+    params: { report_type: 'ga4', start: '2026-09-01', end: '2026-09-28', compare: false },
+    created_at: '2026-09-29T07:00:00Z',
+    exportable: true,
+    sources: { ga4: { source: 'ga4', status: 'ready' } }
+  };
+  const h = await harness({
+    jobs: [{ id: 'job-real', dataset_id: dataset.id, created_at: '2026-09-29T08:00:00Z' }],
+    reports: [{ id: 'legacy-report', dataset_id: dataset.id, created_at: '2026-09-30T08:00:00Z' }],
+    datasetRecords: { [dataset.id]: dataset }
+  });
+  try {
+    h.w.location.hash = `report-builder?dataset=${dataset.id}`;
+    await h.until(() => h.document.querySelector('input[name="report-builder-dataset"]'));
+    assert.equal(h.document.querySelector('input[name="report-builder-dataset"]').checked, true, JSON.stringify({ hash: h.w.location.hash, html: h.document.querySelector('.report-builder-dataset')?.outerHTML, requests: h.requests }));
+    assert.match(h.document.querySelector('#content').textContent, /Chọn Dataset/);
+    assert.match(h.document.querySelector('#content').textContent, /Cấu hình nội dung/);
+    assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Chọn Dataset');
+    assert.equal(h.document.querySelector('.report-builder-stepper li.complete strong').textContent, 'Thông tin báo cáo');
+    assert.equal(Array.from(h.document.querySelectorAll('.report-builder-stepper li[aria-disabled="true"]')).some(step => step.textContent.includes('Xem trước')), true);
+    assert.equal(h.document.querySelector('select[name="client_id"]'), null);
+    assert.equal(h.requests.filter(r => r.path === `/api/datasets/${dataset.id}`).length, 1);
+    assert.equal(h.requests.some(r => r.path === '/api/datasets'), false);
+    assert.equal(h.requests.some(r => /\/api\/(google|analyses|sync|providers)/.test(r.path)), false);
+
+    h.document.querySelector('[data-action="report-builder-back"]').click();
+    await h.until(() => h.document.querySelector('#report-builder-form'));
+    h.document.querySelector('[name="name"]').value = 'Báo cáo tháng 9';
+    h.document.querySelector('[name="start_date"]').value = dataset.params.start;
+    h.document.querySelector('[name="end_date"]').value = dataset.params.end;
+    h.document.querySelector('[data-action="report-builder-next"]').click();
+    await h.until(() => h.document.querySelector('[data-action="report-builder-save"]'));
+    assert.equal(h.document.querySelector('[data-action="report-builder-save"]').disabled, false);
+    h.document.querySelector('[data-action="report-builder-save"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-saved'));
+    const request = h.requests.find(r => r.path === '/api/report-bundles');
+    assert.equal(request.method, 'POST');
+    assert.deepEqual(request.body, {
+      client_id: 'client_kinderhealth',
+      name: 'Báo cáo tháng 9',
+      start_date: dataset.params.start,
+      end_date: dataset.params.end,
+      default_section: 'overview',
+      sections: [{ key: 'overview', dataset_id: dataset.id }]
+    });
+    assert.match(h.document.querySelector('.report-builder-saved').textContent, /DRAFT/);
+    assert.equal(h.document.querySelector('[data-action="report-builder-save"]'), null);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Report Builder shows a truthful empty state when no Dataset references are available', async () => {
+  const h = await harness({ jobs: [], reports: [] });
+  try {
+    h.w.location.hash = 'report-builder';
+    await h.until(() => h.document.querySelector('#report-builder-form'));
+    h.document.querySelector('[name="name"]').value = 'Empty-state test';
+    h.document.querySelector('[data-action="report-builder-next"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-empty'));
+    assert.match(h.document.querySelector('.report-builder-empty').textContent, /Chưa có Dataset/);
+    assert.equal(h.document.querySelector('.report-builder-empty a[href="#analysis"]')?.textContent.includes('Tạo Dataset từ phân tích'), true);
+    assert.equal(h.requests.some(r => r.path === '/api/datasets'), false);
+    assert.equal(h.requests.some(r => r.path === '/api/report-bundles'), false);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
 });
