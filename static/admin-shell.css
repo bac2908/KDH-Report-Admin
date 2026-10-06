@@ -1179,10 +1179,308 @@ body:has(.workspace) {
     overflow-wrap: anywhere;
 }
 
+.report-builder-section-list {
+    display: grid;
+    gap: 12px;
+}
+
+.report-section-card {
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.report-section-card.included {
+    border-color: #a9c6ff;
+    background: #f8faff;
+}
+
+.report-section-card.unavailable {
+    background: #f7f9fc;
+}
+
+.report-section-card-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.report-section-position {
+    display: grid;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    border-radius: 9px;
+    background: #eef3fb;
+    color: #334155;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.report-section-card.included .report-section-position {
+    background: #1769ff;
+    color: #fff;
+}
+
+.report-section-card-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-section-card-copy strong {
+    color: #142b4a;
+    font-size: 14px;
+}
+
+.report-section-card-copy p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.report-section-card-controls {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.4fr) max-content max-content;
+    align-items: center;
+    gap: 12px;
+    padding-left: 42px;
+}
+
+.report-section-toggle,
+.report-section-default {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.report-section-toggle input,
+.report-section-default input {
+    accent-color: #1769ff;
+}
+
+.report-section-card-controls select {
+    width: 100%;
+    min-width: 0;
+}
+
+.report-section-order {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.report-section-order .btn {
+    min-height: 32px;
+    padding: 5px 8px;
+}
+
+.report-builder-validation {
+    display: grid;
+    gap: 8px;
+}
+
+.report-builder-preview {
+    gap: 20px;
+}
+
+.report-preview-summary,
+.report-preview-quality-grid,
+.report-preview-overview-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.report-preview-summary > div,
+.report-preview-quality-grid > article,
+.report-preview-overview-metrics > article {
+    display: grid;
+    gap: 7px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.report-preview-summary > div > span,
+.report-preview-quality-grid > article > span,
+.report-preview-overview-metrics > article > span {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.report-preview-summary strong,
+.report-preview-quality-grid strong,
+.report-preview-overview-metrics strong {
+    min-width: 0;
+    color: #142b4a;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+.report-preview-quality {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #f8faff;
+}
+
+.report-preview-quality > header,
+.report-preview-section > header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.report-preview-quality > header > :first-child,
+.report-preview-section > header > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-preview-quality h2,
+.report-preview-section h2 {
+    margin: 4px 0 0;
+    color: #142b4a;
+    font-size: 17px;
+}
+
+.report-preview-warnings {
+    display: grid;
+    gap: 8px;
+}
+
+.report-preview-navigation {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 0 8px;
+}
+
+.report-preview-navigation .btn {
+    flex: 0 0 auto;
+}
+
+.report-preview-canvas {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid #dce7f7;
+    border-radius: 14px;
+    background: #f3f7fd;
+}
+
+.report-preview-watermark {
+    padding: 11px 14px;
+    border: 1px dashed #9ab9ec;
+    border-radius: 9px;
+    background: #fff;
+    color: #2458a6;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-align: center;
+}
+
+.report-preview-section {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    scroll-margin-top: 20px;
+}
+
+.report-preview-section > header {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+}
+
+.report-preview-default {
+    flex: 0 0 auto;
+}
+
+.report-preview-technical {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.report-preview-technical > div {
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f8faff;
+}
+
+.report-preview-technical dt {
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.report-preview-technical dd {
+    margin: 0;
+    color: #263c59;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.report-preview-content {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+}
+
+.report-preview-content .source-section {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+.report-preview-blocked {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid #fecaca;
+    border-radius: 12px;
+    background: #fffafa;
+}
+
 @media (max-width: 900px) {
     .report-builder-stepper li {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .report-preview-summary,
+    .report-preview-quality-grid,
+    .report-preview-overview-metrics,
+    .report-preview-technical {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .report-section-card-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding-left: 42px;
     }
 }
 
@@ -1201,7 +1499,11 @@ body:has(.workspace) {
     }
 
     .report-builder-dates,
-    .report-builder-review {
+    .report-builder-review,
+    .report-preview-summary,
+    .report-preview-quality-grid,
+    .report-preview-overview-metrics,
+    .report-preview-technical {
         grid-template-columns: minmax(0, 1fr);
     }
 
@@ -1213,6 +1515,40 @@ body:has(.workspace) {
     .report-builder-actions .btn {
         justify-content: center;
         width: 100%;
+    }
+
+    .report-section-card-main {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .report-section-card-main > .badge {
+        margin-left: 42px;
+    }
+
+    .report-preview-canvas,
+    .report-preview-section,
+    .report-preview-quality {
+        padding: 14px;
+    }
+
+    .report-preview-quality > header,
+    .report-preview-section > header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .report-preview-default {
+        margin-left: 42px;
+    }
+
+    .report-section-card-controls {
+        grid-template-columns: minmax(0, 1fr);
+        padding-left: 0;
+    }
+
+    .report-section-order {
+        justify-content: flex-start;
     }
 }
 

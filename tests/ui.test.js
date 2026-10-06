@@ -11,7 +11,7 @@ const types = [{ id: 'seo', label: 'Website Traffic & SEO', can_generate: true }
 const admin = { id: 'admin', name: 'Admin kiểm thử', email: 'admin@example.test', role: 'admin', allowed: types.map(t => t.id), active: 1 };
 const overview = { reports: [], report_count: 0, jobs: [], running: 0, failed: 0, sources: {}, google_connected: false, types, last_export: null, dashboard_url: 'http://localhost:8088', organization: { name: 'KinderHealth', author: '' } };
 
-async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false, googleConfigured = false, googleConnected = false, googleSources = {}, jobs = [], uploads = [], reports = [], datasetRecords = {}, datasetErrors = {}, reportBundleResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleError = null } = {}) {
+async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false, googleConfigured = false, googleConnected = false, googleSources = {}, jobs = [], uploads = [], reports = [], datasetRecords = {}, datasetErrors = {}, reportBundleResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleError = null, reportBundleDetail = null, reportBundleUpdateResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleUpdateError = null } = {}) {
   const errors = [], requests = [], gates = new Map(); const virtualConsole = new VirtualConsole(); virtualConsole.on('jsdomError', e => errors.push(e));
   const dom = new JSDOM(html, { url: 'http://localhost/#overview', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
@@ -19,7 +19,7 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
   w.HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', ''); };
   w.HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
   let user = { ...admin, role }; let params = null; let providerConnected = googleConnected;
-  const processed = new Set();
+  const processed = new Set(); let createdBundlePayload = null; let currentBundlePayload = null;
   const makeDataset = () => dataset || {
     id: 'dataset-1', params: { ...params, search_type: 'web' }, created_at: '2026-09-29T07:00:00+00:00', exportable: true,
     sources: { ga4: { source: 'ga4', label: 'Google Analytics 4', status: 'ready', latest_available_date: params.end, fetched_at: '2026-09-29T07:00:00+00:00', warnings: [], asset: '484358741', timezone: 'Asia/Ho_Chi_Minh', totals: { activeUsers: 15, sessions: 22, screenPageViews: 31, engagementRate: .5 }, daily: [{ date: params.start, activeUsers: 5, sessions: 10, screenPageViews: 10, engagementRate: .5 }, { date: params.end, activeUsers: 10, sessions: 12, screenPageViews: 21, engagementRate: .5 }], channels: [], pages: [] } }
@@ -58,7 +58,24 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
     else if (path === '/api/reports') result = reports;
     else if (path === '/api/report-bundles' && options.method === 'POST') {
       if (reportBundleError) { status = reportBundleError.status; result = { error: reportBundleError.message }; }
-      else result = reportBundleResult;
+      else { createdBundlePayload = body; currentBundlePayload = body; result = reportBundleResult; }
+    }
+    else if (path.startsWith('/api/report-bundles/') && options.method === 'GET') {
+      const payload = currentBundlePayload || createdBundlePayload;
+      result = reportBundleDetail || {
+        report: { id: reportBundleResult.report_id, revision: reportBundleResult.revision, status: reportBundleResult.status, name: payload?.name },
+        client: { id: 'client_kinderhealth', name: 'KinderHealth' },
+        period: { start: payload?.start_date, end: payload?.end_date },
+        comparison: payload?.compare_start_date ? { start: payload.compare_start_date, end: payload.compare_end_date } : null,
+        freshness: { generated_at: '2026-10-01T07:00:00Z' },
+        quality: { status: 'unknown', warnings: [] },
+        navigation: { default_section: payload?.default_section || 'overview', sections: payload?.sections?.map(section => section.key) || ['overview'] },
+        sections: Object.fromEntries((payload?.sections || [{ key: 'overview', dataset_id: 'dataset-1' }]).map((section, position) => [section.key, { dataset_id: section.dataset_id, position }]))
+      };
+    }
+    else if (path.startsWith('/api/report-bundles/') && options.method === 'PATCH') {
+      if (reportBundleUpdateError) { status = reportBundleUpdateError.status; result = { error: reportBundleUpdateError.message }; }
+      else { currentBundlePayload = body; result = reportBundleUpdateResult; }
     }
     else if (path === '/api/events' || path === '/api/schedules') result = [];
     else if (path === '/api/users') result = [user];
@@ -750,6 +767,284 @@ test('Report Builder shows a truthful empty state when no Dataset references are
     assert.equal(h.document.querySelector('.report-builder-empty a[href="#analysis"]')?.textContent.includes('Tạo Dataset từ phân tích'), true);
     assert.equal(h.requests.some(r => r.path === '/api/datasets'), false);
     assert.equal(h.requests.some(r => r.path === '/api/report-bundles'), false);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Report Builder uses presentation sections, orders, assigns, validates, and persists real draft sections', async () => {
+  const seoDataset = {
+    id: 'dataset-seo-period',
+    params: { report_type: 'seo', start: '2026-09-01', end: '2026-09-28', compare: false },
+    created_at: '2026-09-29T07:00:00Z',
+    exportable: true,
+    sources: {
+      ga4: { source: 'ga4', status: 'ready' },
+      gsc: { source: 'gsc', status: 'ready' },
+      keywords: { source: 'keywords', status: 'ready' }
+    }
+  };
+  const gmbDataset = {
+    id: 'dataset-gmb-period',
+    params: { report_type: 'gmb', start: '2026-09-01', end: '2026-09-28', compare: false },
+    created_at: '2026-09-30T07:00:00Z',
+    exportable: false,
+    sources: { gmb: { source: 'gmb', status: 'permission_denied' } }
+  };
+  const h = await harness({
+    jobs: [
+      { id: 'job-seo', dataset_id: seoDataset.id, created_at: '2026-09-29T08:00:00Z' },
+      { id: 'job-gmb', dataset_id: gmbDataset.id, created_at: '2026-09-30T08:00:00Z' }
+    ],
+    datasetRecords: { [seoDataset.id]: seoDataset, [gmbDataset.id]: gmbDataset }
+  });
+  try {
+    h.w.location.hash = 'report-builder';
+    await h.until(() => h.document.querySelector('#report-builder-form'));
+    h.document.querySelector('[name="name"]').value = 'SEO September';
+    h.document.querySelector('[name="start_date"]').value = seoDataset.params.start;
+    h.document.querySelector('[name="end_date"]').value = seoDataset.params.end;
+    h.document.querySelector('[data-action="report-builder-next"]').click();
+    await h.until(() => h.document.querySelector(`input[name="report-builder-dataset"][value="${seoDataset.id}"]`));
+    const selectedDataset = h.document.querySelector(`input[name="report-builder-dataset"][value="${seoDataset.id}"]`);
+    selectedDataset.checked = true;
+    selectedDataset.dispatchEvent(new h.w.Event('change', { bubbles: true }));
+    h.document.querySelector('[data-action="report-builder-save"]').click();
+    await h.until(() => h.document.querySelector('[data-action="report-builder-configure"]'));
+    h.document.querySelector('[data-action="report-builder-configure"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-section-list'));
+
+    assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Cấu hình nội dung');
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-builder-stepper li.complete strong'), step => step.textContent), ['Thông tin báo cáo', 'Chọn Dataset']);
+    assert.equal(Array.from(h.document.querySelectorAll('.report-builder-stepper li[aria-disabled="true"]')).some(step => step.textContent.includes('Xem trước')), true);
+    assert.equal(h.document.querySelector('[data-report-section-toggle="seo"]').disabled, false);
+    assert.equal(h.document.querySelector('[data-report-section-toggle="gmb"]').disabled, false);
+    for (const key of ['ga4', 'gsc', 'keywords']) assert.equal(h.document.querySelector(`[data-report-section-toggle="${key}"]`), null);
+    for (const key of ['facebook_content', 'facebook_ads', 'tiktok', 'youtube']) {
+      assert.equal(h.document.querySelector(`[data-report-section-toggle="${key}"]`).disabled, true);
+      assert.match(h.document.querySelector(`[data-report-section-toggle="${key}"]`).closest('.report-section-card').textContent, /Chưa có Dataset phù hợp/);
+    }
+
+    const overviewToggle = h.document.querySelector('[data-report-section-toggle="overview"]');
+    overviewToggle.click();
+    await h.until(() => h.document.querySelector('.report-builder-validation').textContent.includes('Chọn ít nhất một section'));
+    assert.equal(h.document.querySelector('[data-action="report-builder-save-config"]').disabled, true);
+    h.document.querySelector('[data-report-section-toggle="overview"]').click();
+
+    h.document.querySelector('[data-report-section-toggle="seo"]').click();
+    h.document.querySelector('[data-report-section-toggle="overview"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-validation').textContent.includes('trang mặc định'));
+    assert.equal(h.document.querySelector('[data-action="report-builder-save-config"]').disabled, true);
+    h.document.querySelector('[data-report-section-toggle="overview"]').click();
+    h.document.querySelector('[data-report-section-toggle="gmb"]').click();
+    assert.equal(h.document.querySelector('[data-report-section-dataset="seo"]').value, seoDataset.id);
+    assert.equal(h.document.querySelector('[data-report-section-dataset="gmb"]').value, gmbDataset.id);
+    h.document.querySelector('input[name="report-default-section"][value="gmb"]').click();
+    h.document.querySelector('[data-action="report-section-up"][data-section-key="gmb"]').click();
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-section-card.included .report-section-position'), item => item.textContent), ['1', '2', '3']);
+    assert.equal(h.document.querySelector('[data-action="report-builder-save-config"]').disabled, false);
+    h.document.querySelector('[data-action="report-builder-save-config"]').click();
+    await h.until(() => h.document.querySelector('#toasts').textContent.includes('Đã lưu cấu hình section'));
+
+    const patch = h.requests.find(request => request.method === 'PATCH' && request.path === '/api/report-bundles/rpt_test_bundle/revisions/1');
+    assert.deepEqual(patch.body, {
+      client_id: 'client_kinderhealth',
+      name: 'SEO September',
+      start_date: '2026-09-01',
+      end_date: '2026-09-28',
+      compare_start_date: null,
+      compare_end_date: null,
+      default_section: 'gmb',
+      sections: [
+        { key: 'seo', dataset_id: seoDataset.id },
+        { key: 'gmb', dataset_id: gmbDataset.id },
+        { key: 'overview', dataset_id: seoDataset.id }
+      ]
+    });
+    assert.match(h.document.querySelector('.report-builder-card').textContent, /đã được lưu vào bản nháp revision 1/);
+    assert.equal(h.requests.some(request => /\/api\/(google|analyses|sync|providers|facebook|tiktok|youtube)/.test(request.path)), false);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Report Builder renders non-draft bundle sections read-only', async () => {
+  const dataset = {
+    id: 'dataset-readonly',
+    params: { report_type: 'seo', start: '2026-09-01', end: '2026-09-28', compare: false },
+    created_at: '2026-09-29T07:00:00Z',
+    exportable: true,
+    sources: { ga4: { status: 'ready' } }
+  };
+  const h = await harness({
+    jobs: [{ id: 'job-readonly', dataset_id: dataset.id, created_at: '2026-09-29T08:00:00Z' }],
+    datasetRecords: { [dataset.id]: dataset },
+    reportBundleDetail: {
+      report: { id: 'rpt_test_bundle', revision: 1, status: 'final' },
+      navigation: { default_section: 'overview', sections: ['overview'] },
+      sections: { overview: { dataset_id: dataset.id, position: 0 } }
+    }
+  });
+  try {
+    h.w.location.hash = 'report-builder';
+    await h.until(() => h.document.querySelector('#report-builder-form'));
+    h.document.querySelector('[name="name"]').value = 'Read only report';
+    h.document.querySelector('[name="start_date"]').value = dataset.params.start;
+    h.document.querySelector('[name="end_date"]').value = dataset.params.end;
+    h.document.querySelector('[data-action="report-builder-next"]').click();
+    await h.until(() => h.document.querySelector(`input[name="report-builder-dataset"][value="${dataset.id}"]`));
+    const radio = h.document.querySelector(`input[name="report-builder-dataset"][value="${dataset.id}"]`);
+    radio.checked = true;
+    radio.dispatchEvent(new h.w.Event('change', { bubbles: true }));
+    h.document.querySelector('[data-action="report-builder-save"]').click();
+    await h.until(() => h.document.querySelector('[data-action="report-builder-configure"]'));
+    h.document.querySelector('[data-action="report-builder-configure"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-section-list'));
+    assert.match(h.document.querySelector('.report-builder-card').textContent, /chỉ đọc/i);
+    assert.equal(h.document.querySelector('[data-action="report-builder-save-config"]').disabled, true);
+    assert.equal(h.requests.some(request => request.method === 'PATCH' && request.path.startsWith('/api/report-bundles/')), false);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+async function openReportBuilderConfiguration(h, dataset, name = 'Preview test') {
+  h.w.location.hash = 'report-builder';
+  await h.until(() => h.document.querySelector('#report-builder-form'));
+  h.document.querySelector('[name="name"]').value = name;
+  h.document.querySelector('[name="start_date"]').value = dataset.params.start;
+  h.document.querySelector('[name="end_date"]').value = dataset.params.end;
+  h.document.querySelector('[data-action="report-builder-next"]').click();
+  await h.until(() => h.document.querySelector(`input[name="report-builder-dataset"][value="${dataset.id}"]`));
+  const radio = h.document.querySelector(`input[name="report-builder-dataset"][value="${dataset.id}"]`);
+  radio.checked = true;
+  radio.dispatchEvent(new h.w.Event('change', { bubbles: true }));
+  h.document.querySelector('[data-action="report-builder-save"]').click();
+  await h.until(() => h.document.querySelector('[data-action="report-builder-configure"]'));
+  h.document.querySelector('[data-action="report-builder-configure"]').click();
+  await h.until(() => h.document.querySelector('.report-builder-section-list'));
+}
+
+test('Report Builder preview uses the persisted bundle order and deduplicates real Dataset loads', async () => {
+  const seoDataset = {
+    id: 'dataset-preview-seo',
+    params: { report_type: 'seo', start: '2026-09-01', end: '2026-09-28', compare: false },
+    report_type: 'seo',
+    created_at: '2026-09-29T07:00:00Z',
+    exportable: true,
+    sources: {
+      ga4: { source: 'ga4', status: 'ready', totals: { sessions: 120, activeUsers: 95, screenPageViews: 300, engagementRate: 0.42 }, daily: [{ date: '2026-09-01', sessions: 20 }, { date: '2026-09-28', sessions: 30 }] },
+      gsc: { source: 'gsc', status: 'ready', totals: { clicks: 15, impressions: 100, ctr: 0.15, position: 4.2 }, queries: [{ query: 'KinderHealth', clicks: 15 }] },
+      keywords: { source: 'keywords', status: 'ready', entries: [{ keyword: 'KinderHealth', position: 3 }] }
+    }
+  };
+  const gmbDataset = {
+    id: 'dataset-preview-gmb',
+    params: { report_type: 'gmb', start: '2026-09-01', end: '2026-09-28', compare: false },
+    report_type: 'gmb',
+    created_at: '2026-09-30T07:00:00Z',
+    exportable: true,
+    sources: { gmb: { source: 'gmb', status: 'ready', totals: { views: 45, calls: 3, directions: 8, website_clicks: 6 }, entries: [{ name: 'KinderHealth', calls: 3 }] } }
+  };
+  const h = await harness({
+    jobs: [
+      { id: 'job-preview-seo', dataset_id: seoDataset.id, created_at: '2026-09-29T08:00:00Z' },
+      { id: 'job-preview-gmb', dataset_id: gmbDataset.id, created_at: '2026-09-30T08:00:00Z' }
+    ],
+    datasetRecords: { [seoDataset.id]: seoDataset, [gmbDataset.id]: gmbDataset }
+  });
+  try {
+    await openReportBuilderConfiguration(h, seoDataset, 'September report');
+    h.document.querySelector('[data-report-section-toggle="seo"]').click();
+    h.document.querySelector('[data-report-section-toggle="gmb"]').click();
+    h.document.querySelector('input[name="report-default-section"][value="gmb"]').click();
+    h.document.querySelector('[data-action="report-builder-save-config"]').click();
+    await h.until(() => h.document.querySelector('#toasts').textContent.includes('Đã lưu cấu hình section'));
+    const before = h.requests.length;
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-preview-canvas'));
+
+    assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Xem trước');
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-builder-stepper li.complete strong'), step => step.textContent), ['Thông tin báo cáo', 'Chọn Dataset', 'Cấu hình nội dung']);
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-preview-section > header h2'), heading => heading.textContent), ['Tổng quan', 'Website Traffic & SEO', 'Google Maps & Hồ sơ doanh nghiệp']);
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-preview-navigation button'), button => button.textContent.replace(' ★', '')), ['1. Tổng quan', '2. Website Traffic & SEO', '3. Google Maps & Hồ sơ doanh nghiệp']);
+    assert.match(h.document.querySelector('.report-preview-section#report-preview-gmb').textContent, /Trang mặc định/);
+    assert.match(h.document.querySelector('.report-preview-section#report-preview-seo').textContent, /Google Analytics 4/);
+    assert.match(h.document.querySelector('.report-preview-section#report-preview-seo').textContent, /Search Console/);
+    assert.match(h.document.querySelector('.report-preview-section#report-preview-seo').textContent, /Keyword Tracking/);
+    assert.match(h.document.querySelector('.report-preview-section#report-preview-seo').textContent, /120/);
+    assert.match(h.document.querySelector('.report-preview-summary').textContent, /September report/);
+    assert.match(h.document.querySelector('.report-preview-summary').textContent, /BẢN NHÁP/);
+    assert.match(h.document.querySelector('.report-builder-preview').textContent, /báo cáo chưa được xuất bản/);
+    assert.equal(h.document.querySelectorAll('.report-preview-section input, .report-preview-section select, .report-preview-section textarea').length, 0);
+    assert.equal(h.document.querySelector('[data-action="publish-confirm"]'), null);
+    assert.equal(h.requests.slice(before).filter(request => request.method === 'GET' && request.path === `/api/datasets/${seoDataset.id}`).length, 1);
+    assert.equal(h.requests.slice(before).filter(request => request.method === 'GET' && request.path === `/api/datasets/${gmbDataset.id}`).length, 1);
+    assert.equal(h.requests.slice(before).some(request => /\/api\/(google|analyses|sync|providers|facebook|tiktok|youtube)/.test(request.path)), false);
+    h.document.querySelector('[data-action="report-builder-preview-back"]').click();
+    assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Cấu hình nội dung');
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Report Builder preview warns and blocks content when a referenced Dataset is missing', async () => {
+  const dataset = {
+    id: 'dataset-preview-missing-ref',
+    params: { report_type: 'seo', start: '2026-09-01', end: '2026-09-28', compare: false },
+    created_at: '2026-09-29T07:00:00Z',
+    exportable: true,
+    sources: { ga4: { source: 'ga4', status: 'ready' } }
+  };
+  const h = await harness({
+    jobs: [{ id: 'job-preview-missing-ref', dataset_id: dataset.id }],
+    datasetRecords: { [dataset.id]: dataset },
+    reportBundleDetail: {
+      report: { id: 'rpt_preview_missing', revision: 1, status: 'draft', name: 'Missing Dataset test' },
+      client: { id: 'client_kinderhealth', name: 'KinderHealth' },
+      period: { start: dataset.params.start, end: dataset.params.end },
+      comparison: null,
+      quality: { warnings: [] },
+      navigation: { default_section: 'seo', sections: ['seo'] },
+      sections: { seo: { dataset_id: 'dataset-does-not-exist', position: 0 } }
+    }
+  });
+  try {
+    await openReportBuilderConfiguration(h, dataset);
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-preview-blocked'));
+    assert.match(h.document.querySelector('.report-preview-warnings').textContent, /Không tìm thấy Dataset/);
+    assert.match(h.document.querySelector('.report-preview-blocked').textContent, /Dataset không khả dụng/);
+    assert.equal(h.document.querySelector('.report-preview-section'), null);
+    assert.equal(h.errors.length, 0);
+  } finally { h.close(); }
+});
+
+test('Report Builder preview warns about period mismatch and invalid default without claiming readiness', async () => {
+  const dataset = {
+    id: 'dataset-preview-period',
+    params: { report_type: 'seo', start: '2026-09-01', end: '2026-09-28', compare: false },
+    created_at: '2026-09-29T07:00:00Z',
+    exportable: true,
+    sources: { ga4: { source: 'ga4', status: 'ready' } }
+  };
+  const h = await harness({
+    jobs: [{ id: 'job-preview-period', dataset_id: dataset.id }],
+    datasetRecords: { [dataset.id]: dataset },
+    reportBundleDetail: {
+      report: { id: 'rpt_preview_period', revision: 1, status: 'draft', name: 'Period mismatch test' },
+      client: { id: 'client_kinderhealth', name: 'KinderHealth' },
+      period: { start: '2026-09-02', end: '2026-09-29' },
+      comparison: null,
+      quality: { warnings: [] },
+      navigation: { default_section: 'overview', sections: ['seo'] },
+      sections: { seo: { dataset_id: dataset.id, position: 0 } }
+    }
+  });
+  try {
+    await openReportBuilderConfiguration(h, dataset);
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-preview-blocked'));
+    assert.match(h.document.querySelector('.report-preview-warnings').textContent, /không trùng hoàn toàn với kỳ báo cáo/);
+    assert.match(h.document.querySelector('.report-preview-warnings').textContent, /Trang mặc định không nằm/);
+    assert.match(h.document.querySelector('.report-preview-blocked').textContent, /trang mặc định không hợp lệ/i);
+    assert.doesNotMatch(h.document.querySelector('.report-preview-quality').textContent, /Sẵn sàng cho bước tiếp theo/);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
 });

@@ -49,6 +49,63 @@ function reportBuilderPeriodState(dataset, form) {
     return mismatches;
 }
 
+const reportSectionDefinitions = [
+    { key: 'overview', label: 'Tổng quan', description: 'Tổng quan báo cáo, tham chiếu một Dataset thật theo yêu cầu API hiện tại.', reportTypes: null },
+    { key: 'seo', label: 'Website Traffic & SEO', description: 'Phần trình bày SEO; có thể sử dụng snapshot SEO gồm GA4, Search Console và Keywords.', reportTypes: ['seo'] },
+    { key: 'facebook_content', label: 'Facebook Content', description: 'Nội dung Facebook; cần Dataset loại Facebook Content.', reportTypes: ['facebook-content', 'facebook-content-30d', 'facebook-content-6m'] },
+    { key: 'facebook_ads', label: 'Facebook Ads', description: 'Quảng cáo Facebook; cần Dataset loại Facebook Ads.', reportTypes: ['facebook-ads'] },
+    { key: 'tiktok', label: 'TikTok', description: 'Nội dung hoặc quảng cáo TikTok; cần Dataset TikTok.', reportTypes: ['tiktok'] },
+    { key: 'youtube', label: 'YouTube', description: 'Nội dung YouTube; cần Dataset YouTube.', reportTypes: ['youtube'] },
+    { key: 'gmb', label: 'Google Maps & Hồ sơ doanh nghiệp', description: 'Dữ liệu Google Business Profile.', reportTypes: ['gmb'] }
+];
+
+function reportBuilderDatasetsForPeriod(builder) {
+    return builder.datasets.filter(dataset => {
+        const params = dataset.params || {};
+        const owners = [dataset.client_id, params.client_id].filter(Boolean);
+        const comparisonMismatch = builder.form.compare_start_date && params.compare === true &&
+            ((params.previous_start && params.previous_start !== builder.form.compare_start_date) ||
+                (params.previous_end && params.previous_end !== builder.form.compare_end_date));
+        return dataset.id && params.start === builder.form.start_date && params.end === builder.form.end_date &&
+            owners.every(owner => owner === 'client_kinderhealth') && !comparisonMismatch;
+    });
+}
+
+export function reportBuilderSectionOptions(builder) {
+    const periodDatasets = reportBuilderDatasetsForPeriod(builder);
+    return reportSectionDefinitions.map(definition => {
+        const compatibleDatasets = periodDatasets.filter(dataset => !definition.reportTypes || definition.reportTypes.includes(dataset.report_type || dataset.params?.report_type));
+        const backendSupportsKey = !definition.key.includes('_');
+        return {
+            ...definition,
+            backendSupportsKey,
+            compatibleDatasets,
+            datasets: backendSupportsKey ? compatibleDatasets : []
+        };
+    });
+}
+
+export function reportBuilderConfigValidation(builder) {
+    const errors = [];
+    const sections = builder.configuration?.sections || [];
+    const options = reportBuilderSectionOptions(builder);
+    if (!sections.length) errors.push('Chọn ít nhất một section để đưa vào báo cáo.');
+    if (new Set(sections.map(section => section.key)).size !== sections.length) errors.push('Thứ tự section không được chứa mục trùng lặp.');
+    const included = new Set(sections.map(section => section.key));
+    if (!included.has(builder.configuration?.defaultSection)) errors.push('Chọn một section đang được đưa vào báo cáo làm trang mặc định.');
+    for (const section of sections) {
+        const definition = options.find(option => option.key === section.key);
+        if (!definition) {
+            errors.push(`${section.key}: không phải section trình bày được hỗ trợ.`);
+            continue;
+        }
+        if (!definition?.datasets.some(dataset => dataset.id === section.dataset_id)) {
+            errors.push(`${definition?.label || section.key}: chọn Dataset thật có loại báo cáo và kỳ phù hợp.`);
+        }
+    }
+    return errors;
+}
+
 export function reportBuilderPeriodWarning(dataset, form) {
     if (!dataset) return '';
     const mismatches = reportBuilderPeriodState(dataset, form);
@@ -61,34 +118,179 @@ export function reportBuilderPeriodWarning(dataset, form) {
     return incomplete.map(message => notice(message, 'amber')).join('');
 }
 
+function reportPreviewSections(bundle) {
+    const sectionData = bundle?.sections && typeof bundle.sections === 'object' ? bundle.sections : {};
+    const orderedKeys = Array.isArray(bundle?.navigation?.sections)
+        ? bundle.navigation.sections
+        : Object.entries(sectionData).sort((a, b) => (a[1]?.position ?? 0) - (b[1]?.position ?? 0)).map(([key]) => key);
+    return orderedKeys.map(key => ({ key, ...(sectionData[key] || {}) }));
+}
+
+function reportPreviewWarnings(builder, bundle, sections, datasets, datasetErrors) {
+    const warnings = [];
+    const add = value => { if (typeof value === 'string' && value.trim()) warnings.push(value.trim()); };
+    for (const warning of bundle?.quality?.warnings || []) add(warning);
+    const included = new Set(sections.map(section => section.key));
+    if (!included.size) add('Bản nháp chưa có section được đưa vào báo cáo.');
+    if (!included.has(bundle?.navigation?.default_section)) add('Trang mặc định không nằm trong danh sách section được đưa vào báo cáo.');
+    const knownKeys = new Set(reportSectionDefinitions.map(section => section.key));
+    for (const section of sections) {
+        if (!knownKeys.has(section.key)) add(`Section "${section.key}" không thuộc registry trình bày hiện tại.`);
+        if (!section.dataset_id) add(`${section.key}: thiếu Dataset ID.`);
+        if (section.quality?.warnings) for (const warning of section.quality.warnings) add(`${section.key}: ${warning}`);
+        if (!section.dataset_id || datasetErrors[section.dataset_id]) {
+            add(`${section.key}: ${datasetErrors[section.dataset_id] || 'Không có Dataset để tải.'}`);
+            continue;
+        }
+        const dataset = datasets[section.dataset_id];
+        if (!dataset) continue;
+        const params = dataset.params || {};
+        const reportPeriod = bundle.period || {};
+        if (params.start !== reportPeriod.start || params.end !== reportPeriod.end) {
+            add(`Dataset ${section.key} không trùng hoàn toàn với kỳ báo cáo.`);
+        }
+        if (dataset.exportable === false) add(`Dataset ${section.key} cần kiểm tra theo trạng thái backend.`);
+        const hasComparison = !!bundle.comparison;
+        if (hasComparison && (params.compare !== true ||
+            params.previous_start !== bundle.comparison.start ||
+            params.previous_end !== bundle.comparison.end)) {
+            add(`Dataset ${section.key} thiếu hoặc không khớp kỳ so sánh.`);
+        }
+        for (const [sourceKey, source] of Object.entries(dataset.sources || {})) {
+            if (source?.status && source.status !== 'ready') add(`${section.key} · ${sourceNames[sourceKey] || source.source || sourceKey}: ${source.status}.`);
+            add(source?.error);
+            for (const warning of source?.warnings || []) add(warning);
+        }
+    }
+    if (builder.previewValidationErrors) for (const error of builder.previewValidationErrors) add(error);
+    return [...new Set(warnings)];
+}
+
+function reportPreviewSource(sourceKey, source, params) {
+    source = source && typeof source === 'object' ? source : {};
+    if (['ga4', 'gsc', 'keywords', 'gmb'].includes(sourceKey)) return sourceSection(sourceKey, source, params, true);
+    const rows = source.entries || source.daily || source.queries || [];
+    return `<section class="source-section"><div class="section-title"><h3>${esc(sourceNames[sourceKey] || source.source || sourceKey)}</h3>${source.status ? badge(source.status) : ''}</div>${source.error ? notice(source.error, 'red') : ''}${(source.warnings || []).map(warning => notice(warning, 'amber')).join('')}${rows.length ? dataTable(rows.slice(0, 8), 'Dữ liệu có trong Dataset') : empty('Không có dữ liệu chi tiết', 'Dataset không chứa hàng dữ liệu để xem trước.')}</section>`;
+}
+
+export function reportBuilderPreviewView(builder, types) {
+    const preview = builder.preview;
+    if (builder.previewLoading) return `<section class="card report-builder-card"><div class="empty"><span class="spinner"></span><h2>Đang tải bản xem trước</h2><p>Đang đọc Report Bundle và các Dataset snapshot đã gán.</p></div></section>`;
+    if (builder.previewError) {
+        return `<section class="card report-builder-card">${notice(builder.previewError, 'red')}<div class="report-builder-actions">${button('Quay lại cấu hình', 'report-builder-preview-back', 'secondary')}</div></section>`;
+    }
+    const bundle = preview?.bundle;
+    if (!bundle) return `<section class="card report-builder-card">${notice('Không có bản xem trước đã tải.', 'amber')}<div class="report-builder-actions">${button('Quay lại cấu hình', 'report-builder-preview-back', 'secondary')}</div></section>`;
+    const report = bundle.report || {};
+    const sections = reportPreviewSections(bundle);
+    const datasets = preview.datasets || {};
+    const datasetErrors = preview.datasetErrors || {};
+    const uniqueIds = [...new Set(sections.map(section => section.dataset_id).filter(Boolean))];
+    const loadedDatasets = uniqueIds.map(id => datasets[id]).filter(Boolean);
+    const sources = loadedDatasets.flatMap(dataset => Object.values(dataset.sources || {}));
+    const readySources = sources.filter(source => source?.status === 'ready').length;
+    const warnings = reportPreviewWarnings(builder, bundle, sections, datasets, datasetErrors);
+    const invalid = (builder.previewValidationErrors || []).length > 0;
+    const period = bundle.period || {};
+    const comparison = bundle.comparison;
+    const orderedKeys = new Set(sections.map(section => section.key));
+    const invalidDefault = !orderedKeys.has(bundle.navigation?.default_section);
+    const reportTypeLabel = type => types.find(item => item.id === type)?.label || type || '—';
+    const sectionCards = sections.map((section, index) => {
+        const definition = reportSectionDefinitions.find(item => item.key === section.key);
+        const datasetId = section.dataset_id || '';
+        const dataset = datasets[datasetId];
+        const params = dataset?.params || {};
+        const type = dataset?.report_type || params.report_type || section.report_type;
+        const sectionWarnings = [];
+        if (datasetErrors[datasetId]) sectionWarnings.push(datasetErrors[datasetId]);
+        if (!datasetId) sectionWarnings.push('Section này chưa có Dataset ID.');
+        if (dataset?.exportable === false) sectionWarnings.push('Dataset cần kiểm tra theo trạng thái backend.');
+        const sourceKeys = Object.keys(dataset?.sources || {});
+        const content = section.key === 'overview'
+            ? `<div class="report-preview-overview-metrics"><article><span>Kỳ dữ liệu</span><strong>${period.start && period.end ? `${date(period.start)} → ${date(period.end)}` : '—'}</strong></article><article><span>Section trong báo cáo</span><strong>${sections.length}</strong></article><article><span>Dataset snapshot</span><strong>${uniqueIds.length}</strong></article><article><span>Nguồn sẵn sàng</span><strong>${readySources} / ${sources.length}</strong></article><article><span>Cảnh báo</span><strong>${warnings.length}</strong></article></div>`
+            : dataset
+                ? sourceKeys.map(key => reportPreviewSource(key, dataset.sources[key], params)).join('') || empty('Không có dữ liệu nguồn', 'Dataset không chứa nguồn dữ liệu để xem trước.')
+                : empty('Không tải được Dataset', 'Section vẫn được giữ trong thứ tự đã lưu; nội dung không thể hiển thị khi Dataset không khả dụng.');
+        const status = dataset ? dataset.exportable === true ? '<span class="badge green">Hợp lệ</span>' : dataset.exportable === false ? '<span class="badge amber">Cần kiểm tra</span>' : '<span class="badge neutral">Chưa xác định</span>' : '<span class="badge red">Không khả dụng</span>';
+        const compactId = datasetId.length > 18 ? `${datasetId.slice(0, 8)}…${datasetId.slice(-6)}` : datasetId || '—';
+        const sourceContent = sectionWarnings.map(warning => notice(warning, 'amber')).join('');
+        return `<article class="report-preview-section" id="report-preview-${esc(section.key)}"><header><span class="report-section-position">${index + 1}</span><div><span class="eyebrow">SECTION ${index + 1}</span><h2>${esc(definition?.label || section.key)}</h2></div>${bundle.navigation?.default_section === section.key ? '<span class="badge blue report-preview-default">★ Trang mặc định</span>' : ''}</header><dl class="report-preview-technical"><div><dt>Dataset ID</dt><dd class="code" title="${esc(datasetId)}">${esc(compactId)}</dd></div><div><dt>Loại Dataset</dt><dd>${esc(reportTypeLabel(type))}</dd></div><div><dt>Kỳ dữ liệu</dt><dd>${params.start || params.end ? `${date(params.start)} → ${date(params.end)}` : '—'}</dd></div><div><dt>Chất lượng</dt><dd>${status}</dd></div><div><dt>Nguồn trong snapshot</dt><dd>${sourceKeys.length ? sourceKeys.map(key => esc(sourceNames[key] || key)).join(', ') : '—'}</dd></div></dl>${sourceContent}<div class="report-preview-content">${content}</div></article>`;
+    }).join('');
+    const invalidNotices = (builder.previewValidationErrors || []).map(message => notice(message, 'red')).join('');
+    const summary = `<section class="report-preview-summary"><div><span>Tên báo cáo</span><strong>${esc(report.name || '—')}</strong></div><div><span>Khách hàng</span><strong>${esc(bundle.client?.name || '—')}</strong></div><div><span>Kỳ báo cáo</span><strong>${period.start && period.end ? `${date(period.start)} → ${date(period.end)}` : '—'}</strong></div><div><span>Kỳ so sánh</span><strong>${comparison?.start && comparison?.end ? `${date(comparison.start)} → ${date(comparison.end)}` : 'Không cấu hình'}</strong></div><div><span>Revision</span><strong>${report.revision ?? '—'}</strong></div><div><span>Trạng thái</span><strong>${report.status === 'draft' ? '<span class="badge amber">BẢN NHÁP</span>' : '<span class="badge neutral">Chỉ hỗ trợ bản nháp</span>'}</strong></div>${bundle.freshness?.generated_at ? `<div><span>Snapshot tạo lúc</span><strong>${time(bundle.freshness.generated_at)}</strong></div>` : ''}</section>`;
+    const quality = `<section class="report-preview-quality"><header><div><span class="eyebrow">DATA QUALITY</span><h2>Chất lượng dữ liệu</h2></div><span class="badge ${warnings.length ? 'amber' : 'green'}">${warnings.length ? 'Cần kiểm tra dữ liệu' : 'Sẵn sàng cho bước tiếp theo'}</span></header><div class="report-preview-quality-grid"><article><span>Section</span><strong>${sections.length}</strong></article><article><span>Dataset hợp lệ</span><strong>${loadedDatasets.filter(dataset => dataset.exportable === true).length} / ${uniqueIds.length}</strong></article><article><span>Nguồn sẵn sàng</span><strong>${readySources} / ${sources.length}</strong></article><article><span>Cảnh báo</span><strong>${warnings.length}</strong></article></div>${warnings.length ? `<div class="report-preview-warnings" role="status">${warnings.map(warning => notice(warning, 'amber')).join('')}</div>` : ''}</section>`;
+    const navigation = `<nav class="report-preview-navigation" aria-label="Thứ tự section">${sections.map((section, index) => {
+        const definition = reportSectionDefinitions.find(item => item.key === section.key);
+        return `<button type="button" class="btn text" data-action="report-preview-section" data-target="report-preview-${esc(section.key)}">${index + 1}. ${esc(definition?.label || section.key)}${bundle.navigation?.default_section === section.key ? ' ★' : ''}</button>`;
+    }).join('')}</nav>`;
+    const canvas = invalid || report.status !== 'draft' || invalidDefault
+        ? `<section class="report-preview-blocked">${invalidNotices || notice('Cấu hình section không hợp lệ. Quay lại cấu hình để sửa trước khi xem nội dung.', 'red')}${report.status !== 'draft' ? notice('Bước xem trước này chỉ hỗ trợ Report Bundle ở trạng thái DRAFT.', 'amber') : ''}</section>`
+        : `<section class="report-preview-canvas"><div class="report-preview-watermark">BẢN XEM TRƯỚC · ADMIN</div>${sectionCards || empty('Chưa có section', 'Bản nháp hiện chưa có section để xem trước.')}</section>`;
+    return `<section class="card report-builder-card report-builder-preview"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 4 · XEM TRƯỚC</span><h2>Xem trước nội dung báo cáo</h2><p>Kiểm tra cấu trúc và dữ liệu snapshot đã lưu. Đây là bản xem trước trong Admin; báo cáo chưa được xuất bản.</p></div>${report.status !== 'draft' ? notice('Chỉ có thể xem trước nội dung bản nháp trong bước này.', 'amber') : notice('Đây là bản xem trước trong Admin. Báo cáo chưa được xuất bản.', 'blue')}${summary}${invalidDefault ? notice('Cấu hình trang mặc định không hợp lệ. Preview nội dung bị khóa cho đến khi sửa cấu hình.', 'red') : ''}${quality}${navigation}${canvas}<div class="report-builder-actions">${button('Quay lại chọn Dataset', 'report-builder-preview-back-dataset', 'secondary')}${button('Quay lại cấu hình', 'report-builder-preview-back', 'primary')}</div></section>`;
+}
+
 export function reportBuilderView(builder, types) {
     const form = builder.form;
     const selected = builder.datasets.find(dataset => dataset.id === builder.selectedDatasetId);
     const steps = ['Thông tin báo cáo', 'Chọn Dataset', 'Cấu hình nội dung', 'Xem trước'];
-    const currentStep = builder.step === 2 ? 2 : 1;
+    const currentStep = Math.min(Math.max(Number(builder.step) || 1, 1), 4);
     const stepper = `<ol class="report-builder-stepper">${steps.map((label, index) => {
         const number = index + 1;
-        const future = number > 2;
+        const future = number === 4 && currentStep < 4;
         const active = number === currentStep;
         const complete = number < currentStep;
         const upcoming = number > currentStep;
         return `<li class="${active ? 'active' : complete ? 'complete' : 'upcoming'} ${future ? 'disabled' : ''}" ${active ? 'aria-current="step"' : ''} ${upcoming ? 'aria-disabled="true"' : ''}><span>${complete ? icon('check', 14) : number}</span><strong>${label}</strong></li>`;
     }).join('')}</ol>`;
-    const top = heading('THIẾT KẾ BÁO CÁO', 'Report Builder', 'Tạo bản nháp từ Dataset snapshot bất biến. Chỉ bước thông tin và chọn dữ liệu khả dụng trong giai đoạn này.', `<a class="btn secondary" href="#reports">Xem báo cáo</a>`);
+    const top = heading('THIẾT KẾ BÁO CÁO', 'Report Builder', 'Tạo bản nháp từ Dataset snapshot bất biến và kiểm tra nội dung trước các bước tiếp theo.', `<a class="btn secondary" href="#reports">Xem báo cáo</a>`);
     const errors = [
         builder.preselectionError ? notice(builder.preselectionError, 'amber') : '',
-        builder.loadErrors.length ? notice(`${builder.loadErrors.length} Dataset tham chiếu không tải được; chỉ Dataset đọc được mới có thể chọn.`, 'amber') : ''
+        builder.loadErrors.length ? notice(`${builder.loadErrors.length} Dataset tham chiếu không tải được; chỉ Dataset đọc được mới có thể chọn.`, 'amber') : '',
+        builder.unsupportedSectionKeys?.length ? notice(`Các section cũ không còn được hỗ trợ như section trình bày (${builder.unsupportedSectionKeys.join(', ')}). Chúng sẽ được loại khỏi cấu hình khi lưu.`, 'amber') : ''
     ].join('');
     const stepContent = currentStep === 1
         ? `<section class="card report-builder-card"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 1 · THÔNG TIN</span><h2>Thông tin báo cáo</h2><p>Nhập tên và kỳ dữ liệu cần dùng cho bản nháp.</p></div><form id="report-builder-form" class="report-builder-form" novalidate><div class="field report-builder-name"><label for="report-builder-name">Tên báo cáo</label><input id="report-builder-name" name="name" value="${esc(form.name)}" maxlength="200" required placeholder="Nhập tên báo cáo"></div><div class="report-builder-dates"><div class="field"><label for="report-builder-start">Từ ngày</label><input id="report-builder-start" name="start_date" type="date" value="${esc(form.start_date)}" required></div><div class="field"><label for="report-builder-end">Đến ngày</label><input id="report-builder-end" name="end_date" type="date" value="${esc(form.end_date)}" required></div></div><fieldset class="report-builder-comparison"><legend>Kỳ so sánh <span class="muted">(không bắt buộc)</span></legend><div class="report-builder-dates"><div class="field"><label for="report-builder-compare-start">Từ ngày</label><input id="report-builder-compare-start" name="compare_start_date" type="date" value="${esc(form.compare_start_date)}"></div><div class="field"><label for="report-builder-compare-end">Đến ngày</label><input id="report-builder-compare-end" name="compare_end_date" type="date" value="${esc(form.compare_end_date)}"></div></div><small class="form-note">Nếu nhập kỳ so sánh, cần cung cấp đủ cả ngày bắt đầu và kết thúc.</small></fieldset><div class="report-builder-flow">${icon('chart', 18)}<span>Phân tích</span><span aria-hidden="true">→</span><span>Dataset snapshot</span><span aria-hidden="true">→</span><span>Bản nháp báo cáo</span></div><div class="report-builder-actions"><span class="form-note">Trạng thái ban đầu của báo cáo là DRAFT.</span>${button('Tiếp tục chọn Dataset', 'report-builder-next', 'primary')}</div></form></section>`
-        : `<section class="card report-builder-card"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 2 · DỮ LIỆU</span><h2>Chọn Dataset</h2><p>Chọn một snapshot đã tồn tại. Dữ liệu Dataset không bị thay đổi.</p></div><div class="report-builder-review"><div><span>Tên báo cáo</span><strong>${esc(form.name || '—')}</strong></div><div><span>Kỳ dữ liệu</span><strong>${form.start_date ? date(form.start_date) : '—'} → ${form.end_date ? date(form.end_date) : '—'}</strong></div>${form.compare_start_date && form.compare_end_date ? `<div><span>Kỳ so sánh</span><strong>${date(form.compare_start_date)} → ${date(form.compare_end_date)}</strong></div>` : ''}</div>${builder.datasets.length ? `<div class="report-builder-dataset-list">${builder.datasets.map(dataset => {
+        : currentStep === 2
+        ? `<section class="card report-builder-card"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 2 · DỮ LIỆU</span><h2>Chọn Dataset</h2><p>Chọn một snapshot đã tồn tại. Dữ liệu Dataset không bị thay đổi.</p></div><div class="report-builder-review"><div><span>Tên báo cáo</span><strong>${esc(form.name || '—')}</strong></div><div><span>Kỳ dữ liệu</span><strong>${form.start_date ? date(form.start_date) : '—'} → ${form.end_date ? date(form.end_date) : '—'}</strong></div>${form.compare_start_date && form.compare_end_date ? `<div><span>Kỳ so sánh</span><strong>${date(form.compare_start_date)} → ${date(form.compare_end_date)}</strong></div>` : ''}</div>${builder.datasets.length ? `<div class="report-builder-dataset-list">${builder.datasets.map(dataset => {
             const id = String(dataset.id || '');
             const params = dataset.params || {};
             const sourceKeys = Object.keys(dataset.sources || {});
             const period = params.start || params.end ? `${params.start ? date(params.start) : '—'} → ${params.end ? date(params.end) : '—'}` : '—';
             const status = dataset.exportable === true ? '<span class="badge green">Hợp lệ</span>' : dataset.exportable === false ? '<span class="badge amber">Cần kiểm tra</span>' : '<span class="badge neutral">Chưa xác định</span>';
-            return `<label class="report-builder-dataset ${id === builder.selectedDatasetId ? 'selected' : ''}"><input type="radio" name="report-builder-dataset" value="${esc(id)}" ${id === builder.selectedDatasetId ? 'checked' : ''}><span class="report-builder-dataset-body"><span class="report-builder-dataset-heading"><strong class="code" title="${esc(id)}">${esc(id)}</strong>${status}</span><span class="report-builder-dataset-meta"><span>${esc(types.find(type => type.id === params.report_type)?.label || params.report_type || '—')}</span><span>${period}</span><span>${sourceKeys.length ? sourceKeys.map(key => sourceNames[key] || key).map(esc).join(', ') : '—'}</span><span>${dataset.created_at ? time(dataset.created_at) : '—'}</span></span></span></label>`;
-        }).join('')}</div>` : `<div class="report-builder-empty">${empty('Chưa có Dataset', 'Dataset sẽ xuất hiện sau khi hoàn tất một lần phân tích dữ liệu.', '<a class="btn primary" href="#analysis">Tạo Dataset từ phân tích</a>')}</div>`}<div id="report-builder-period-warning" class="report-builder-notices">${reportBuilderPeriodWarning(selected, form)}</div>${selected?.exportable === false ? notice('Dataset chưa đủ điều kiện xuất theo trạng thái backend. Có thể lưu bản nháp để giữ lại kết quả và cảnh báo chất lượng.', 'amber') : ''}${builder.saveResult ? `<div class="report-builder-saved">${notice('Đã lưu bản nháp theo phản hồi của backend.', 'green')}<dl><dt>Report ID</dt><dd class="code">${esc(builder.saveResult.report_id || '—')}</dd><dt>Revision</dt><dd>${builder.saveResult.revision ?? '—'}</dd><dt>Trạng thái</dt><dd><span class="badge neutral">${esc(String(builder.saveResult.status || '—').toUpperCase())}</span></dd></dl></div>` : ''}<div class="report-builder-actions">${button('Quay lại', 'report-builder-back', 'secondary')}${builder.saveResult ? '' : button('Lưu bản nháp', 'report-builder-save', 'primary', ` ${!selected || reportBuilderPeriodState(selected, form).length ? 'disabled' : ''}`)}</div></section>`;
+            return `<label class="report-builder-dataset ${id === builder.selectedDatasetId ? 'selected' : ''}"><input type="radio" name="report-builder-dataset" value="${esc(id)}" ${id === builder.selectedDatasetId ? 'checked' : ''} ${builder.saveResult ? 'disabled' : ''}><span class="report-builder-dataset-body"><span class="report-builder-dataset-heading"><strong class="code" title="${esc(id)}">${esc(id)}</strong>${status}</span><span class="report-builder-dataset-meta"><span>${esc(types.find(type => type.id === params.report_type)?.label || params.report_type || '—')}</span><span>${period}</span><span>${sourceKeys.length ? sourceKeys.map(key => sourceNames[key] || key).map(esc).join(', ') : '—'}</span><span>${dataset.created_at ? time(dataset.created_at) : '—'}</span></span></span></label>`;
+        }).join('')}</div>` : `<div class="report-builder-empty">${empty('Chưa có Dataset', 'Dataset sẽ xuất hiện sau khi hoàn tất một lần phân tích dữ liệu.', '<a class="btn primary" href="#analysis">Tạo Dataset từ phân tích</a>')}</div>`}<div id="report-builder-period-warning" class="report-builder-notices">${reportBuilderPeriodWarning(selected, form)}</div>${selected?.exportable === false ? notice('Dataset chưa đủ điều kiện xuất theo trạng thái backend. Có thể lưu bản nháp để giữ lại kết quả và cảnh báo chất lượng.', 'amber') : ''}${builder.saveResult ? `<div class="report-builder-saved">${notice('Đã lưu bản nháp theo phản hồi của backend.', 'green')}<dl><dt>Report ID</dt><dd class="code">${esc(builder.saveResult.report_id || '—')}</dd><dt>Revision</dt><dd>${builder.saveResult.revision ?? '—'}</dd><dt>Trạng thái</dt><dd><span class="badge neutral">${esc(String(builder.saveResult.status || '—').toUpperCase())}</span></dd></dl></div>` : ''}<div class="report-builder-actions">${button('Quay lại', 'report-builder-back', 'secondary')}${builder.saveResult ? button('Tiếp tục cấu hình nội dung', 'report-builder-configure', 'primary', builder.saveResult.status === 'draft' ? '' : '') : button('Lưu bản nháp', 'report-builder-save', 'primary', ` ${!selected || reportBuilderPeriodState(selected, form).length ? 'disabled' : ''}`)}</div></section>`
+        : currentStep === 3 ? (() => {
+            const options = reportBuilderSectionOptions(builder);
+            const configuration = builder.configuration || { sections: [], defaultSection: '' };
+            const included = new Set(configuration.sections.map(section => section.key));
+            const validation = reportBuilderConfigValidation(builder);
+            const readOnly = builder.bundleStatus !== 'draft';
+            const orderedOptions = [...options].sort((a, b) => {
+                const positionA = configuration.sections.findIndex(section => section.key === a.key);
+                const positionB = configuration.sections.findIndex(section => section.key === b.key);
+                if (positionA >= 0 && positionB >= 0) return positionA - positionB;
+                if (positionA >= 0) return -1;
+                if (positionB >= 0) return 1;
+                return options.indexOf(a) - options.indexOf(b);
+            });
+            const rows = orderedOptions.map(option => {
+                const section = configuration.sections.find(item => item.key === option.key);
+                const position = section ? configuration.sections.indexOf(section) : -1;
+                const available = option.datasets.length > 0;
+                const availability = available
+                    ? section ? 'Đang đưa vào' : 'Sẵn sàng'
+                    : option.compatibleDatasets.length && !option.backendSupportsKey
+                        ? 'Backend chưa hỗ trợ khóa section snake_case'
+                        : 'Chưa có Dataset phù hợp';
+                const assignment = section?.dataset_id || '';
+                const selector = `<select data-report-section-dataset="${esc(option.key)}" aria-label="Dataset cho ${esc(option.label)}" ${!section || readOnly || !available ? 'disabled' : ''}><option value="">Chọn Dataset</option>${option.datasets.map(dataset => `<option value="${esc(dataset.id)}" ${dataset.id === assignment ? 'selected' : ''}>${esc(dataset.id)} · ${esc(types.find(type => type.id === (dataset.report_type || dataset.params?.report_type))?.label || dataset.report_type || dataset.params?.report_type || '—')}</option>`).join('')}</select>`;
+                const order = section ? `<span class="report-section-position">${position + 1}</span>` : '<span class="report-section-position muted">—</span>';
+                const reorder = section ? `<div class="report-section-order">${button('Lên', 'report-section-up', 'text', `data-section-key="${esc(option.key)}" aria-label="Di chuyển ${esc(option.label)} lên" ${position === 0 || readOnly ? 'disabled' : ''}`)}${button('Xuống', 'report-section-down', 'text', `data-section-key="${esc(option.key)}" aria-label="Di chuyển ${esc(option.label)} xuống" ${position === configuration.sections.length - 1 || readOnly ? 'disabled' : ''}`)}</div>` : '';
+                return `<article class="report-section-card ${section ? 'included' : ''} ${!available ? 'unavailable' : ''}"><div class="report-section-card-main">${order}<div class="report-section-card-copy"><strong>${esc(option.label)}</strong><p>${esc(option.description)}</p></div><span class="badge ${available ? section ? 'blue' : 'green' : 'neutral'}">${esc(availability)}</span></div><div class="report-section-card-controls"><label class="report-section-toggle"><input type="checkbox" data-report-section-toggle="${esc(option.key)}" ${section ? 'checked' : ''} ${!available || readOnly ? 'disabled' : ''}><span>Đưa vào báo cáo</span></label>${selector}${section ? `<label class="report-section-default"><input type="radio" name="report-default-section" value="${esc(option.key)}" ${configuration.defaultSection === option.key ? 'checked' : ''} ${readOnly ? 'disabled' : ''}><span>Trang mặc định</span></label>` : ''}${reorder}</div></article>`;
+            }).join('');
+            return `<section class="card report-builder-card"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 3 · SECTION</span><h2>Cấu hình nội dung</h2><p>Chọn các section, gán Dataset thật và sắp xếp thứ tự hiển thị. Dataset snapshot không bị thay đổi.</p></div><div class="report-builder-review"><div><span>Tên báo cáo</span><strong>${esc(form.name || '—')}</strong></div><div><span>Kỳ dữ liệu</span><strong>${form.start_date ? date(form.start_date) : '—'} → ${date(form.end_date)}</strong></div><div><span>Report Bundle</span><strong class="code">${esc(builder.reportId || '—')} · v${builder.revision || '—'}</strong></div></div>${readOnly ? notice('Report Bundle không ở trạng thái DRAFT. Cấu hình chỉ đọc.', 'amber') : ''}<div class="report-builder-section-list">${rows}</div><section class="report-builder-validation" aria-live="polite">${validation.map(message => notice(message, 'red')).join('') || notice('Cấu hình section hợp lệ: thứ tự, Dataset và trang mặc định đã được xác định.', 'green')}</section>${builder.configurationSaved ? notice(`Cấu hình đã được lưu vào bản nháp revision ${builder.revision} theo phản hồi backend.`, 'green') : ''}<div class="report-builder-actions">${button('Quay lại Dataset', 'report-builder-back', 'secondary')}${button(readOnly ? 'Chỉ đọc' : 'Lưu cấu hình', 'report-builder-save-config', 'primary', `${readOnly || validation.length ? 'disabled' : ''}`)}${button('Tiếp tục đến xem trước', 'report-builder-preview', 'primary', `${readOnly || !builder.configurationSaved ? 'disabled' : ''}`)}</div></section>`;
+        })() : reportBuilderPreviewView(builder, types);
     return `<div class="report-builder-page">${top}${stepper}${errors}${stepContent}<p class="report-builder-note">Report Builder chỉ đọc Dataset snapshot hiện có. Chọn một Dataset không gọi lại nền tảng dữ liệu hoặc làm mới dữ liệu nguồn.</p></div>`;
 }
 

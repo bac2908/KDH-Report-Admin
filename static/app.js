@@ -1,6 +1,6 @@
 import { api, setCsrf } from './api.js';
 import { esc, date, time, num, icon, badge, empty, button, notice, modal, toast, table, sourceNames, kindNames, roles } from './ui.js';
-import { pages, connectionPlatforms, loginView, shell, overviewView, clientsView, assetsView, syncView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, datasetsView, datasetsTable, datasetDetailView, datasetDetailNotFoundView, reportBuilderView, reportBuilderPeriodWarning, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, skeletonView, jobProgress, dataTable } from './views.js';
+import { pages, connectionPlatforms, loginView, shell, overviewView, clientsView, assetsView, syncView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, datasetsView, datasetsTable, datasetDetailView, datasetDetailNotFoundView, reportBuilderView, reportBuilderPeriodWarning, reportBuilderConfigValidation, reportBuilderSectionOptions, reportBuilderPreviewView, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, skeletonView, jobProgress, dataTable } from './views.js';
 
 const state = { user: null, overview: null, page: 'overview', generation: 0, authEpoch: 0, dataset: null, datasetDetail: null, datasetDetailTab: 'summary', datasets: [], reportBuilder: null, draft: null, job: null, tab: 'summary', tablePage: 0, uploads: [], reports: [], users: [], schedules: [], reportFilter: {}, jobFilter: '' };
 const $ = s => document.querySelector(s);
@@ -148,6 +148,135 @@ function readReportBuilderForm() {
 function renderReportBuilder() {
     if (state.page === 'report-builder' && state.reportBuilder) $('#content').innerHTML = reportBuilderView(state.reportBuilder, state.overview.types) + footer();
 }
+function reportBuilderConfigurationFromBundle(builder, bundle) {
+    const sections = bundle.sections || {};
+    const keys = Array.isArray(bundle.navigation?.sections)
+        ? bundle.navigation.sections
+        : Object.entries(sections).sort((a, b) => (a[1].position ?? 0) - (b[1].position ?? 0)).map(([key]) => key);
+    const supportedKeys = new Set(reportBuilderSectionOptions(builder).map(option => option.key));
+    builder.unsupportedSectionKeys = keys.filter(key => !supportedKeys.has(key));
+    return {
+        sections: keys.filter(key => supportedKeys.has(key) && sections[key]).map(key => ({ key, dataset_id: sections[key].dataset_id || '' })),
+        defaultSection: supportedKeys.has(bundle.navigation?.default_section) ? bundle.navigation.default_section : ''
+    };
+}
+function reportBuilderPreviewValidation(bundle, datasets, datasetErrors) {
+    const errors = [];
+    const definitions = new Map(reportBuilderSectionOptions(state.reportBuilder).map(option => [option.key, option]));
+    const sectionData = bundle.sections && typeof bundle.sections === 'object' ? bundle.sections : {};
+    const keys = Array.isArray(bundle.navigation?.sections) ? bundle.navigation.sections : [];
+    if (!keys.length) errors.push('Report Bundle chưa có section được lưu.');
+    if (new Set(keys).size !== keys.length) errors.push('Danh sách section lưu trong Report Bundle có mục trùng lặp.');
+    if (!keys.includes(bundle.navigation?.default_section)) errors.push('Trang mặc định không hợp lệ: không nằm trong danh sách section được lưu.');
+    if (bundle.report?.status !== 'draft') errors.push('Chỉ có thể xem trước Report Bundle ở trạng thái DRAFT.');
+    for (const key of keys) {
+        const section = sectionData[key];
+        const definition = definitions.get(key);
+        if (!definition) {
+            errors.push(`Section "${key}" không thuộc registry trình bày hiện tại.`);
+            continue;
+        }
+        if (!section || typeof section !== 'object') {
+            errors.push(`${definition.label}: thiếu thông tin section trong Report Bundle.`);
+            continue;
+        }
+        const datasetId = section.dataset_id;
+        if (typeof datasetId !== 'string' || !datasetId) {
+            errors.push(`${definition.label}: thiếu Dataset ID.`);
+            continue;
+        }
+        if (datasetErrors[datasetId] || !datasets[datasetId]) {
+            errors.push(`${definition.label}: Dataset không khả dụng.`);
+            continue;
+        }
+        const dataset = datasets[datasetId];
+        const reportType = dataset.report_type || dataset.params?.report_type;
+        if (definition.reportTypes && !definition.reportTypes.includes(reportType)) {
+            errors.push(`${definition.label}: Dataset không tương thích với section trình bày.`);
+        }
+    }
+    return errors;
+}
+async function loadReportBuilderPreview() {
+    const builder = state.reportBuilder;
+    if (!builder?.reportId || !builder.revision) throw new Error('Không tìm thấy Report Bundle để xem trước.');
+    if (builder.bundleStatus !== 'draft' || !builder.configurationSaved) throw new Error('Hãy lưu cấu hình của bản nháp trước khi mở xem trước.');
+    const authEpoch = state.authEpoch;
+    builder.previewLoading = true;
+    builder.previewError = '';
+    builder.preview = null;
+    builder.step = 4;
+    renderReportBuilder();
+    try {
+        const bundle = await api('/report-bundles/' + encodeURIComponent(builder.reportId));
+        if (authEpoch !== state.authEpoch || state.page !== 'report-builder' || state.reportBuilder !== builder) return;
+        builder.revision = bundle.report?.revision ?? builder.revision;
+        builder.bundleStatus = bundle.report?.status || 'unknown';
+        builder.form.name = String(bundle.report?.name || builder.form.name || '');
+        builder.form.start_date = String(bundle.period?.start || '');
+        builder.form.end_date = String(bundle.period?.end || '');
+        builder.form.compare_start_date = String(bundle.comparison?.start || '');
+        builder.form.compare_end_date = String(bundle.comparison?.end || '');
+        builder.configuration = reportBuilderConfigurationFromBundle(builder, bundle);
+        const sectionData = bundle.sections && typeof bundle.sections === 'object' ? bundle.sections : {};
+        const sectionKeys = Array.isArray(bundle.navigation?.sections) ? bundle.navigation.sections : [];
+        const datasetIds = [...new Set(sectionKeys.map(key => sectionData[key]?.dataset_id).filter(id => typeof id === 'string' && id))];
+        const datasetResults = await Promise.all(datasetIds.map(async id => {
+            try {
+                const dataset = await api('/datasets/' + encodeURIComponent(id));
+                return [id, dataset, null];
+            } catch (err) {
+                if (err.status === 401 || err.status === 403) throw err;
+                return [id, null, err.status === 404 ? `Không tìm thấy Dataset (${id}).` : err.message || `Không thể tải Dataset (${id}).`];
+            }
+        }));
+        if (authEpoch !== state.authEpoch || state.page !== 'report-builder' || state.reportBuilder !== builder) return;
+        const datasets = Object.fromEntries(datasetResults.filter(([, dataset]) => dataset).map(([id, dataset]) => [id, dataset]));
+        const datasetErrors = Object.fromEntries(datasetResults.filter(([, , error]) => error).map(([id, , error]) => [id, error]));
+        builder.datasets = [...builder.datasets.filter(dataset => !datasets[dataset.id]), ...Object.values(datasets)];
+        builder.preview = { bundle, datasets, datasetErrors };
+        builder.previewValidationErrors = reportBuilderPreviewValidation(bundle, datasets, datasetErrors);
+        builder.previewLoading = false;
+        renderReportBuilder();
+    } catch (err) {
+        if (authEpoch !== state.authEpoch || state.page !== 'report-builder' || state.reportBuilder !== builder) return;
+        builder.previewLoading = false;
+        if (err.status === 404) builder.previewError = 'Không tìm thấy báo cáo.';
+        else if (err.status === 401 || err.status === 403) throw err;
+        else builder.previewError = err.message || 'Không thể tải bản xem trước.';
+        renderReportBuilder();
+    }
+}
+function updateReportBuilderConfiguration(el) {
+    const builder = state.reportBuilder;
+    const configuration = builder?.configuration;
+    if (!builder || !configuration || builder.bundleStatus !== 'draft') return;
+    if (el.matches('[data-report-section-toggle]')) {
+        const key = el.dataset.reportSectionToggle;
+        if (el.checked) {
+            const option = reportBuilderSectionOptions(builder).find(item => item.key === key);
+            const candidates = option?.datasets || [];
+            const selected = candidates.find(dataset => dataset.id === builder.selectedDatasetId);
+            const assignment = candidates.length === 1 ? candidates[0].id : selected?.id || '';
+            configuration.sections.push({ key, dataset_id: assignment });
+        } else {
+            configuration.sections = configuration.sections.filter(section => section.key !== key);
+        }
+    } else if (el.matches('[data-report-section-dataset]')) {
+        const section = configuration.sections.find(item => item.key === el.dataset.reportSectionDataset);
+        if (section) section.dataset_id = el.value;
+    } else if (el.matches('[name="report-default-section"]')) {
+        configuration.defaultSection = el.value;
+    } else if (el.matches('[data-section-key][data-action="report-section-up"], [data-section-key][data-action="report-section-down"]')) {
+        const index = configuration.sections.findIndex(section => section.key === el.dataset.sectionKey);
+        const destination = index + (el.dataset.action === 'report-section-up' ? -1 : 1);
+        if (index >= 0 && destination >= 0 && destination < configuration.sections.length) {
+            [configuration.sections[index], configuration.sections[destination]] = [configuration.sections[destination], configuration.sections[index]];
+        }
+    }
+    builder.configurationSaved = false;
+    renderReportBuilder();
+}
 function validateReportBuilderForm() {
     const form = state.reportBuilder.form;
     if (!form.name.trim() || form.name.trim().length > 200) throw new Error('Tên báo cáo cần từ 1 đến 200 ký tự.');
@@ -227,7 +356,54 @@ async function act(action, el) {
         case 'export-modal': exportModal(); break;
         case 'dataset-detail-export': exportModal(state.datasetDetail); break;
         case 'report-builder-next': readReportBuilderForm(); validateReportBuilderForm(); state.reportBuilder.step = 2; renderReportBuilder(); break;
-        case 'report-builder-back': readReportBuilderForm(); state.reportBuilder.step = 1; renderReportBuilder(); break;
+        case 'report-builder-back': if (state.reportBuilder.step === 3) state.reportBuilder.step = 2; else { readReportBuilderForm(); state.reportBuilder.step = 1; } renderReportBuilder(); break;
+        case 'report-builder-preview': await loadReportBuilderPreview(); break;
+        case 'report-builder-preview-back': state.reportBuilder.step = 3; state.reportBuilder.previewLoading = false; renderReportBuilder(); break;
+        case 'report-builder-preview-back-dataset': state.reportBuilder.step = 2; state.reportBuilder.previewLoading = false; renderReportBuilder(); break;
+        case 'report-preview-section': {
+            const target = document.getElementById(el.dataset.target);
+            if (target) target.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+            break;
+        }
+        case 'report-builder-configure': {
+            const builder = state.reportBuilder;
+            if (!builder?.reportId || !builder.revision) throw new Error('Lưu bản nháp trước khi cấu hình section.');
+            const bundle = await api('/report-bundles/' + encodeURIComponent(builder.reportId));
+            builder.revision = bundle.report?.revision || builder.revision;
+            builder.bundleStatus = bundle.report?.status || builder.saveResult?.status || 'unknown';
+            builder.configuration = reportBuilderConfigurationFromBundle(builder, bundle);
+            builder.configurationSaved = true;
+            builder.step = 3;
+            renderReportBuilder();
+            break;
+        }
+        case 'report-section-up':
+        case 'report-section-down': updateReportBuilderConfiguration(el); break;
+        case 'report-builder-save-config': {
+            const builder = state.reportBuilder;
+            if (!builder || builder.bundleStatus !== 'draft') throw new Error('Chỉ có thể sửa Report Bundle đang ở trạng thái DRAFT.');
+            const errors = reportBuilderConfigValidation(builder);
+            if (errors.length) throw new Error(errors.join(' '));
+            const payload = {
+                client_id: 'client_kinderhealth',
+                name: builder.form.name.trim(),
+                start_date: builder.form.start_date,
+                end_date: builder.form.end_date,
+                compare_start_date: builder.form.compare_start_date || null,
+                compare_end_date: builder.form.compare_end_date || null,
+                default_section: builder.configuration.defaultSection,
+                sections: builder.configuration.sections.map(section => ({ key: section.key, dataset_id: section.dataset_id }))
+            };
+            const result = await api(`/report-bundles/${encodeURIComponent(builder.reportId)}/revisions/${builder.revision}`, 'PATCH', payload);
+            if (result.status !== 'draft') throw new Error('Backend không xác nhận trạng thái DRAFT; cấu hình chưa được xác nhận.');
+            builder.revision = result.revision;
+            builder.bundleStatus = result.status;
+            builder.configurationSaved = true;
+            builder.unsupportedSectionKeys = [];
+            toast('Đã lưu cấu hình section vào bản nháp.');
+            renderReportBuilder();
+            break;
+        }
         case 'report-builder-save': {
             readReportBuilderForm();
             validateReportBuilderForm();
@@ -250,6 +426,9 @@ async function act(action, el) {
                 payload.compare_end_date = builder.form.compare_end_date;
             }
             builder.saveResult = await api('/report-bundles', 'POST', payload);
+            builder.reportId = builder.saveResult.report_id;
+            builder.revision = builder.saveResult.revision;
+            builder.bundleStatus = builder.saveResult.status;
             renderReportBuilder();
             toast('Đã lưu bản nháp báo cáo.');
             break;
@@ -291,7 +470,7 @@ document.addEventListener('submit', async event => {
     } catch (err) { if (form.id === 'auth-form') { form.querySelector('.auth-error')?.remove(); const e = document.createElement('p'); e.className = 'auth-error'; e.setAttribute('role', 'alert'); e.textContent = err.message; form.querySelector('button[type=submit]').before(e); } else await handleError(err); } finally { if (btn?.isConnected) { btn.disabled = false; btn.innerHTML = text; updateFilterState(); } }
 });
 
-document.addEventListener('change', event => { const el = event.target; if (el.closest('#analysis-form')) { readDraft(); if (el.name === 'report_type' || el.name === 'compare' || el.name === 'demo') renderAnalysis(); else updateFilterState(); } if (el.matches('[name="report-builder-dataset"]')) { state.reportBuilder.selectedDatasetId = el.value; renderReportBuilder(); } if (el.id === 'job-status-filter') { state.jobFilter = el.value; $('#content').innerHTML = activityView(state.jobs, state.events, state.user, state.jobFilter) + footer(); } if (el.id === 'csv-file') { const name = el.files?.[0]?.name || ''; const dates = name.match(/\d{4}-\d{1,2}-\d{1,2}/g); if (dates?.length >= 2) { const iso = d => d.split('-').map((s, i) => i ? s.padStart(2, '0') : s).join('-'); $('#csv-start').value = iso(dates[0]); $('#csv-end').value = iso(dates[1]); } } });
+document.addEventListener('change', event => { const el = event.target; if (el.closest('#analysis-form')) { readDraft(); if (el.name === 'report_type' || el.name === 'compare' || el.name === 'demo') renderAnalysis(); else updateFilterState(); } if (el.matches('[name="report-builder-dataset"]')) { state.reportBuilder.selectedDatasetId = el.value; renderReportBuilder(); } if (el.matches('[data-report-section-toggle], [data-report-section-dataset], [name="report-default-section"]')) updateReportBuilderConfiguration(el); if (el.id === 'job-status-filter') { state.jobFilter = el.value; $('#content').innerHTML = activityView(state.jobs, state.events, state.user, state.jobFilter) + footer(); } if (el.id === 'csv-file') { const name = el.files?.[0]?.name || ''; const dates = name.match(/\d{4}-\d{1,2}-\d{1,2}/g); if (dates?.length >= 2) { const iso = d => d.split('-').map((s, i) => i ? s.padStart(2, '0') : s).join('-'); $('#csv-start').value = iso(dates[0]); $('#csv-end').value = iso(dates[1]); } } });
 document.addEventListener('input', event => { if (event.target.closest('#analysis-form')) { readDraft(); updateFilterState(); } });
 document.addEventListener('input', event => { if (event.target.closest('#report-builder-form')) readReportBuilderForm(); });
 document.addEventListener('input', event => { if (event.target.closest('#dataset-filters')) updateDatasetTable(); });
