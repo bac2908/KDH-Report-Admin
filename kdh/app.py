@@ -14,6 +14,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .core import ROOT, TYPES, TZ, GOOD, Store, Problem, allowed, digest, filters, load_config, now, pack, public_user, uid
 from .google import Google, SourceError, LABELS
+from .meta import Meta
 from .jobs import Worker, enqueue, job_view, next_run, period_dates
 from .reports import import_legacy, publish, save_report, save_upload, valid_dataset
 from .report_bundle_routes import register_report_bundle_routes
@@ -52,8 +53,9 @@ def create_app(overrides=None):
     store = Store(app.config['DATA_DIR'], app.config['DATABASE_URL'])
     _bootstrap_initial_admin(store, app.config['INITIAL_ADMIN_EMAIL'], app.config['INITIAL_ADMIN_PASSWORD'])
     google = Google(store, app.config)
+    meta = Meta(store, app.config, google.cipher)
     worker = Worker(store, google)
-    app.extensions.update(store=store, google=google, worker=worker)
+    app.extensions.update(store=store, google=google, meta=meta, worker=worker)
     dummy_hash = generate_password_hash(secrets.token_urlsafe(32))
 
     def local_setup():
@@ -328,6 +330,36 @@ def create_app(overrides=None):
         revoked = google.disconnect()
         store.event(g.user['id'], 'google_disconnect', {'revoked_at_provider':revoked})
         return jsonify(message='Đã ngắt kết nối.' if revoked else 'Đã xóa kết nối tại ứng dụng. Google chưa xác nhận thu hồi; bạn có thể thu hồi trong tài khoản Google.')
+
+    @app.get('/api/meta')
+    @require('admin')
+    def meta_info():
+        return jsonify(meta.info())
+
+    @app.post('/api/meta/connect')
+    @require('admin')
+    def meta_connect():
+        return jsonify(url=meta.authorization_url(g.session_id))
+
+    @app.get('/api/meta/callback')
+    @require('admin')
+    def meta_callback():
+        try:
+            result = meta.callback(request.args.get('state', ''), request.args.get('code', ''),
+                                   g.session_id, request.args.get('error', ''))
+            if result == 'success':
+                store.event(g.user['id'], 'meta_connect')
+        except (Problem, SourceError):
+            result = 'failed'
+        return redirect('/#connections/facebook?oauth=' + result)
+
+    @app.delete('/api/meta')
+    @require('admin')
+    def meta_disconnect():
+        revoked = meta.disconnect()
+        store.event(g.user['id'], 'meta_disconnect', {'revoked_at_provider': revoked})
+        return jsonify(revoked_at_provider=revoked, message='Đã ngắt kết nối Meta.' if revoked else
+                       'Đã xóa kết nối tại ứng dụng. Meta chưa xác nhận thu hồi; hãy kiểm tra quyền ứng dụng trong tài khoản Facebook.')
 
     @app.post('/api/analyses')
     @require()

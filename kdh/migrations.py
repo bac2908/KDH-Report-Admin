@@ -169,6 +169,20 @@ CREATE INDEX IF NOT EXISTS idx_report_bundles_published_revision
 ON report_bundles(bundle_key, status, revision);
 """,
     ),
+    (
+        3,
+        "meta_oauth_states",
+        """
+CREATE TABLE IF NOT EXISTS meta_oauth_states (
+    state TEXT PRIMARY KEY,
+    client_id TEXT NOT NULL REFERENCES clients(id),
+    session_id TEXT NOT NULL,
+    config_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    consumed INTEGER NOT NULL DEFAULT 0
+);
+""",
+    ),
 ]
 
 

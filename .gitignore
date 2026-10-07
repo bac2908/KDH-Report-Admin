@@ -11,3 +11,5 @@ __pycache__/
 test-results/
 node_modules/
 .npm-cache/
+
+kdh/*.bak

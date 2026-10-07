@@ -1,39 +1,66 @@
 name: kdh-report-admin
+
 services:
   admin:
     build: .
     image: kdh-report-admin:demo
     init: true
+
     ports:
       - "127.0.0.1:8090:8090"
+
     environment:
       DATA_DIR: /app/instance
       JOB_MODE: worker
       REPORT_SERVICE_TOKEN: ${REPORT_SERVICE_TOKEN:-}
-      APP_URL: ${APP_URL:-http://127.0.0.1:8090}
+
+      APP_URL: ${APP_URL:-http://localhost:8090}
       COOKIE_SECURE: ${COOKIE_SECURE:-0}
+
+      # Google OAuth
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://127.0.0.1:8090/api/google/callback}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8090/api/google/callback}
+
+      # Meta / Facebook Login for Business
+      META_APP_ID: ${META_APP_ID:-}
+      META_APP_SECRET: ${META_APP_SECRET:-}
+      META_CONFIG_ID: ${META_CONFIG_ID:-}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v26.0}
+      META_REDIRECT_URI: ${META_REDIRECT_URI:-http://localhost:8090/api/meta/callback}
+
+      # Reporting sources
       GA4_PROPERTY_ID: ${GA4_PROPERTY_ID:-484358741}
       GSC_PROPERTY: ${GSC_PROPERTY:-https://kinderhealth.vn/}
       KEYWORD_SPREADSHEET_ID: ${KEYWORD_SPREADSHEET_ID:-1oVC_gc-_878btw6GJ9gQSDHJ7sqiGu2QB-lqMArqbSo}
       KEYWORD_SHEET: ${KEYWORD_SHEET:-Ranking}
       KEYWORD_TRACKING_YEAR: ${KEYWORD_TRACKING_YEAR:-}
+
       LEGACY_REPORT_DIR: /legacy
       DASHBOARD_URL: ${DASHBOARD_URL:-http://127.0.0.1:8088}
+
     volumes:
       - admin-data:/app/instance
+
       - type: bind
         source: ${LEGACY_REPORT_DIR:-../KDH-Report/KDH-Report}
         target: /legacy
         read_only: true
+
     restart: unless-stopped
+
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=5)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=5)"
+        ]
       interval: 30s
       timeout: 10s
       start_period: 15s
       retries: 3
+
 volumes:
   admin-data:

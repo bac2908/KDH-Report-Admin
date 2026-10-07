@@ -218,6 +218,13 @@ def load_config():
 
         ),
 
+        'META_APP_ID': os.getenv('META_APP_ID', '').strip(),
+        'META_APP_SECRET': os.getenv('META_APP_SECRET', '').strip(),
+        'META_CONFIG_ID': os.getenv('META_CONFIG_ID', '').strip(),
+        'META_GRAPH_VERSION': os.getenv('META_GRAPH_VERSION', 'v26.0').strip(),
+        'META_REDIRECT_URI': (os.getenv('META_REDIRECT_URI', '').strip() or
+                              os.getenv('APP_URL', 'http://127.0.0.1:8090').rstrip('/') + '/api/meta/callback'),
+
         'GA4_PROPERTY_ID': os.getenv(
 
             'GA4_PROPERTY_ID',

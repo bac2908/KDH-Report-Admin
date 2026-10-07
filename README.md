@@ -10,7 +10,7 @@ Làm theo [hướng dẫn Docker](DEPLOY_DOCKER.md): cấu hình `.env`, build c
 
 Admin có thể tạo report bundle từ các dataset đã lưu qua `POST /api/report-bundles`, tạo revision mới và xuất bản `provisional`/`final`. KDH-Report-New đọc snapshot bằng `GET /api/internal/v1/report-bundles/{report_id}` với Bearer `REPORT_SERVICE_TOKEN` chỉ giữ ở backend. GET không gọi provider, tính lại KPI hay phụ thuộc dữ liệu live. ID `rpt_...` giữ nguyên qua các revision; nội dung đã xuất bản không được sửa.
 
-Xem [endpoint, JSON contract, ví dụ request/response và migration 2](docs/report-bundles.md). Không thay thế luồng HTML/Excel hiện tại và không cần database thứ hai. Task này tập trung API/service/tests, chưa thêm UI tạo bundle.
+Xem [endpoint, JSON contract, ví dụ request/response và migration 2](docs/report-bundles.md). Không thay thế luồng HTML/Excel hiện tại và không cần database thứ hai. Report Builder hỗ trợ tạo bản nháp, lưu cấu hình section và xem trước nội dung snapshot đã lưu trong Admin. Preview chỉ đọc bản DRAFT, không gọi provider hoặc xuất bản báo cáo.
 
 ## Demo bằng Docker trên máy này
 
@@ -97,6 +97,10 @@ Tài khoản Google cần được chia sẻ quyền riêng trên cả ba tài s
 Backend giữ access token và refresh token mã hóa bằng Fernet trong database. Docker/local dùng khóa ở `instance/encryption.key`; deployment PostgreSQL dùng biến `ENCRYPTION_KEY` cố định. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
 
 Tài liệu API đã đối chiếu: [Google OAuth Web Server](https://developers.google.com/identity/protocols/oauth2/web-server), [GA4 runReport](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runReport), [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), [Sheets values.get](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get).
+
+## Kết nối Meta OAuth
+
+Admin hỗ trợ kết nối, callback, trạng thái và ngắt kết nối Meta tại **Kết nối nền tảng → Facebook**. Token chỉ lưu mã hóa ở backend. Chưa khám phá tài sản, đồng bộ hoặc tạo Dataset Facebook. Xem [cấu hình, API và giới hạn Meta OAuth](docs/meta-oauth.md).
 
 ## Luồng đã triển khai
 

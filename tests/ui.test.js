@@ -11,7 +11,7 @@ const types = [{ id: 'seo', label: 'Website Traffic & SEO', can_generate: true }
 const admin = { id: 'admin', name: 'Admin kiểm thử', email: 'admin@example.test', role: 'admin', allowed: types.map(t => t.id), active: 1 };
 const overview = { reports: [], report_count: 0, jobs: [], running: 0, failed: 0, sources: {}, google_connected: false, types, last_export: null, dashboard_url: 'http://localhost:8088', organization: { name: 'KinderHealth', author: '' } };
 
-async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false, googleConfigured = false, googleConnected = false, googleSources = {}, jobs = [], uploads = [], reports = [], datasetRecords = {}, datasetErrors = {}, reportBundleResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleError = null, reportBundleDetail = null, reportBundleUpdateResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleUpdateError = null } = {}) {
+async function harness({ signedIn = true, role = 'admin', dataset = null, demo = false, requestMode = false, setupRequired = false, googleConfigured = false, googleConnected = false, googleSources = {}, metaStatus = { configured: false, connected: false, has_connection: false, status: 'disconnected' }, metaReadError = null, metaConnectError = null, metaRevoked = true, jobs = [], uploads = [], reports = [], datasetRecords = {}, datasetErrors = {}, reportBundleResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleError = null, reportBundleDetail = null, reportBundleReadError = null, reportBundleUpdateResult = { report_id: 'rpt_test_bundle', revision: 1, status: 'draft' }, reportBundleUpdateError = null } = {}) {
   const errors = [], requests = [], gates = new Map(); const virtualConsole = new VirtualConsole(); virtualConsole.on('jsdomError', e => errors.push(e));
   const dom = new JSDOM(html, { url: 'http://localhost/#overview', runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole });
   const w = dom.window;
@@ -20,6 +20,14 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
   w.HTMLDialogElement.prototype.close = function () { this.removeAttribute('open'); };
   let user = { ...admin, role }; let params = null; let providerConnected = googleConnected;
   const processed = new Set(); let createdBundlePayload = null; let currentBundlePayload = null;
+  let capturedSections = {};
+  const captureSections = sections => Object.fromEntries(sections.map((section, position) => {
+    const record = datasetRecords[section.dataset_id] || dataset;
+    const data = record ? structuredClone(record) : null;
+    if (data) delete data.exportable;
+    return [section.key, { dataset_id: section.dataset_id, position, report_type: record?.params?.report_type,
+      valid: record?.exportable, data }];
+  }));
   const makeDataset = () => dataset || {
     id: 'dataset-1', params: { ...params, search_type: 'web' }, created_at: '2026-09-29T07:00:00+00:00', exportable: true,
     sources: { ga4: { source: 'ga4', label: 'Google Analytics 4', status: 'ready', latest_available_date: params.end, fetched_at: '2026-09-29T07:00:00+00:00', warnings: [], asset: '484358741', timezone: 'Asia/Ho_Chi_Minh', totals: { activeUsers: 15, sessions: 22, screenPageViews: 31, engagementRate: .5 }, daily: [{ date: params.start, activeUsers: 5, sessions: 10, screenPageViews: 10, engagementRate: .5 }, { date: params.end, activeUsers: 10, sessions: 12, screenPageViews: 21, engagementRate: .5 }], channels: [], pages: [] } }
@@ -52,13 +60,25 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
     else if (path === '/api/google/check') result = { created: true, job_id: 'check-1' };
     else if (path === '/api/jobs/check-1') result = { id: 'check-1', kind: 'connection', status: 'succeeded', params: { start: '2026-09-01', end: '2026-09-07' }, created_at: '2026-09-08T00:00:00Z', finished_at: '2026-09-08T00:01:00Z', steps: [] };
     else if (path === '/api/google/connect') result = { url: 'https://accounts.google.com/test-auth' };
+    else if (path === '/api/meta/connect') {
+      if (metaConnectError) { status = metaConnectError.status; result = { error: metaConnectError.message }; }
+      else result = { url: '#meta-test-authorization' };
+    }
+    else if (path === '/api/meta' && options.method === 'DELETE') {
+      metaStatus = { configured: true, connected: false, has_connection: false, status: 'disconnected' };
+      result = { revoked_at_provider: metaRevoked, message: metaRevoked ? 'Đã ngắt kết nối Meta.' : 'Đã xóa kết nối tại ứng dụng. Meta chưa xác nhận thu hồi.' };
+    }
+    else if (path === '/api/meta') {
+      if (metaReadError) { status = metaReadError.status; result = { error: metaReadError.message }; }
+      else result = metaStatus;
+    }
     else if (path === '/api/google' && options.method === 'DELETE') { providerConnected = false; result = { message: 'Đã ngắt kết nối Google.' }; }
     else if (path === '/api/google') result = { configured: googleConfigured, connected: providerConnected, email: providerConnected ? 'connected@example.test' : null, connected_at: providerConnected ? '2026-09-01T00:00:00Z' : null, checked_at: null, sources: googleSources, assets: { ga4: 'property-config', gsc: 'property-url', keywords: 'sheet-config' } };
     else if (path === '/api/jobs') result = jobs;
     else if (path === '/api/reports') result = reports;
     else if (path === '/api/report-bundles' && options.method === 'POST') {
       if (reportBundleError) { status = reportBundleError.status; result = { error: reportBundleError.message }; }
-      else { createdBundlePayload = body; currentBundlePayload = body; result = reportBundleResult; }
+      else { createdBundlePayload = body; currentBundlePayload = body; capturedSections = captureSections(body.sections); result = reportBundleResult; }
     }
     else if (path.startsWith('/api/report-bundles/') && options.method === 'GET') {
       const payload = currentBundlePayload || createdBundlePayload;
@@ -70,12 +90,13 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
         freshness: { generated_at: '2026-10-01T07:00:00Z' },
         quality: { status: 'unknown', warnings: [] },
         navigation: { default_section: payload?.default_section || 'overview', sections: payload?.sections?.map(section => section.key) || ['overview'] },
-        sections: Object.fromEntries((payload?.sections || [{ key: 'overview', dataset_id: 'dataset-1' }]).map((section, position) => [section.key, { dataset_id: section.dataset_id, position }]))
+        sections: capturedSections
       };
+      if (reportBundleReadError?.status) { status = reportBundleReadError.status; result = { error: reportBundleReadError.message }; }
     }
     else if (path.startsWith('/api/report-bundles/') && options.method === 'PATCH') {
       if (reportBundleUpdateError) { status = reportBundleUpdateError.status; result = { error: reportBundleUpdateError.message }; }
-      else { currentBundlePayload = body; result = reportBundleUpdateResult; }
+      else { currentBundlePayload = body; capturedSections = captureSections(body.sections); result = reportBundleUpdateResult; }
     }
     else if (path === '/api/events' || path === '/api/schedules') result = [];
     else if (path === '/api/users') result = [user];
@@ -391,7 +412,7 @@ test('Primary navigation is complete and provider routes remain reachable withou
     assert.ok(h.document.querySelector('.nav-link[href="#connections"].active'));
     assert.equal(h.document.querySelector('[data-action=connect-google]').disabled, true); assert.match(h.document.querySelector('#content').textContent, /Chưa cấu hình Google OAuth/);
     h.w.location.hash = 'connections/facebook'; await h.until(() => h.document.querySelector('#content h1')?.textContent.includes('Facebook'));
-    assert.match(h.document.querySelector('#content').textContent, /Meta API chưa được tích hợp ở backend/); assert.equal(h.document.querySelector('#content button[disabled]').textContent, 'Kết nối Facebook'); assert.ok(h.document.querySelector('a[href="https://developers.facebook.com/docs/marketing-apis/"]'));
+    assert.match(h.document.querySelector('#content').textContent, /Chưa cấu hình Meta OAuth/); assert.equal(h.document.querySelector('#content button[disabled]').textContent, 'Kết nối Meta');
     h.w.location.hash = 'connections/tiktok'; await h.until(() => h.document.querySelector('#content h1')?.textContent.includes('TikTok'));
     assert.match(h.document.querySelector('#content').textContent, /TikTok API chưa được tích hợp ở backend/); assert.equal(h.document.querySelector('#content button[disabled]').textContent, 'Kết nối TikTok'); assert.ok(h.document.querySelector('a[href="https://business-api.tiktok.com/portal/docs"]'));
     assert.deepEqual(h.errors, []);
@@ -666,6 +687,127 @@ test('Google connection checks and disconnect use the existing routes and action
   } finally { h.close(); }
 });
 
+test('Meta connection shows persisted identity and revokes through its own API only', async () => {
+  const h = await harness({ metaStatus: { configured: true, connected: true, has_connection: true, status: 'connected', account_id: 'meta-user-test', account_name: '<img src=x onerror=alert(1)>', connected_at: '2026-09-01T00:00:00Z', expires_at: '2026-11-01T00:00:00Z', scopes: ['public_profile'] }, metaRevoked: false });
+  try {
+    const before = h.requests.length;
+    h.w.location.hash = 'connections/facebook';
+    await h.until(() => h.document.querySelector('[data-action="disconnect-meta"]'));
+    const content = h.document.querySelector('#content');
+    assert.match(content.textContent, /meta-user-test/);
+    assert.match(content.textContent, /<img src=x onerror=alert\(1\)>/);
+    assert.equal(content.querySelector('img'), null);
+    assert.match(content.textContent, /Đã kết nối OAuth/);
+    assert.match(content.textContent, /public_profile/);
+    assert.match(content.textContent, /Đã xác thực Meta. Chưa chọn tài sản dữ liệu/);
+    assert.match(content.textContent, /Chưa khám phá tài sản hoặc đồng bộ/);
+    assert.equal(h.document.querySelector('[data-action="connect-facebook"]').disabled, false);
+    h.document.querySelector('[data-action="disconnect-meta"]').click();
+    assert.ok(h.document.querySelector('#modal').open);
+    h.document.querySelector('[data-action="disconnect-meta-confirm"]').click();
+    await h.until(() => !h.document.querySelector('[data-action="disconnect-meta"]'));
+    assert.match(h.document.querySelector('#toasts').textContent, /Meta chưa xác nhận thu hồi/);
+    assert.match(h.document.querySelector('.connection-meta').textContent, /Chưa kết nối/);
+    assert.deepEqual(h.requests.slice(before).map(r => [r.method, r.path]), [['GET', '/api/meta'], ['DELETE', '/api/meta'], ['GET', '/api/meta']]);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Meta card exposes connect before authentication without fabricating assets', async () => {
+  const h = await harness({ metaStatus: { configured: true, connected: false, has_connection: false, status: 'disconnected' } });
+  try {
+    h.w.location.hash = 'connections';
+    await h.until(() => h.document.querySelector('.connection-meta'));
+    const card = h.document.querySelector('.connection-meta');
+    assert.match(card.textContent, /Facebook Content · Facebook Ads/);
+    assert.match(card.textContent, /Chưa kết nối/);
+    assert.doesNotMatch(card.textContent, /Đã xác thực Meta|Facebook Page|Ad Account|Lần đồng bộ/);
+    const connect = card.querySelector('[data-action="connect-facebook"]');
+    assert.equal(connect.textContent, 'Kết nối Meta');
+    assert.equal(connect.disabled, false);
+    connect.click();
+    await h.until(() => h.w.location.hash === '#meta-test-authorization');
+    assert.equal(h.requests.filter(r => r.path === '/api/meta/connect' && r.method === 'POST').length, 1);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Meta callback messages remain on Facebook and never start Google checks or job polling', async () => {
+  const h = await harness({ metaStatus: { configured: true, connected: false, status: 'disconnected' } });
+  try {
+    const before = h.requests.length;
+    for (const [result, message] of [['success', /Đã kết nối Meta. Chưa đồng bộ dữ liệu/], ['denied', /Bạn đã hủy cấp quyền Meta/], ['failed', /Kết nối chưa hoàn tất/]]) {
+      h.w.location.hash = `connections/facebook?oauth=${result}&job=untrusted-job`;
+      await h.until(() => h.w.location.hash === '#connections/facebook');
+      assert.match(h.document.querySelector('#content').textContent, message);
+      assert.equal(h.document.querySelector('#content h1').textContent, 'Facebook');
+    }
+    assert.ok(h.requests.slice(before).every(r => r.method === 'GET' && r.path === '/api/meta'));
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Meta connect redirects using the backend response and displays backend errors', async () => {
+  for (const failure of [false, true]) {
+    const h = await harness({ metaStatus: { configured: true, connected: false, status: 'disconnected' }, metaConnectError: failure ? { status: 503, message: 'Cần cấu hình Meta OAuth.' } : null });
+    try {
+      h.w.location.hash = 'connections/facebook';
+      await h.until(() => h.document.querySelector('[data-action="connect-facebook"]'));
+      h.document.querySelector('[data-action="connect-facebook"]').click();
+      await h.until(() => failure ? h.document.querySelector('#toasts').textContent.includes('Cần cấu hình Meta OAuth.') : h.w.location.hash === '#meta-test-authorization');
+      assert.equal(h.requests.filter(r => r.path === '/api/meta/connect' && r.method === 'POST').length, 1);
+      assert.equal(h.w.localStorage.length, 0);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  }
+});
+
+test('Meta expiry and unreadable stored credentials permit reconnect without inventing ready sources', async () => {
+  for (const [status, label] of [['expired', /Quyền đã hết hạn/], ['reconnect_required', /Cần kết nối lại/], ['error', /Không đọc được kết nối/]]) {
+    const h = await harness({ metaStatus: { configured: true, connected: false, has_connection: true, status } });
+    try {
+      h.w.location.hash = 'connections/facebook';
+      await h.until(() => h.document.querySelector('.connection-meta'));
+      assert.match(h.document.querySelector('.connection-meta').textContent, label);
+      assert.ok(h.document.querySelector('[data-action="disconnect-meta"]'));
+      assert.equal(h.document.querySelector('[data-action="connect-facebook"]').disabled, false);
+      assert.doesNotMatch(h.document.querySelector('.connection-meta').textContent, /Sẵn sàng|Đã kết nối OAuth/);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  }
+});
+
+test('Meta status failures do not invent disconnected accounts and viewer cannot load credentials UI', async () => {
+  const h = await harness({ metaReadError: { status: 503, message: 'Trạng thái Meta tạm thời không đọc được.' } });
+  try {
+    h.w.location.hash = 'connections/facebook';
+    await h.until(() => h.document.querySelector('#content').textContent.includes('Không thể hiển thị màn hình'));
+    assert.match(h.document.querySelector('#content').textContent, /Trạng thái Meta tạm thời không đọc được/);
+    assert.equal(h.document.querySelector('[data-action="connect-facebook"]'), null);
+  } finally { h.close(); }
+  const viewer = await harness({ role: 'viewer' });
+  try {
+    viewer.w.location.hash = 'connections/facebook';
+    await viewer.until(() => viewer.document.querySelector('#content').textContent.includes('chỉ dành cho quản trị viên'));
+    assert.equal(viewer.requests.some(r => r.path.startsWith('/api/meta')), false);
+  } finally { viewer.close(); }
+});
+
+test('Late Meta status is discarded after navigating away', async () => {
+  const h = await harness(); let release;
+  try {
+    release = h.hold('/api/meta');
+    h.w.location.hash = 'connections/facebook';
+    await h.until(() => h.requests.some(r => r.path === '/api/meta'));
+    h.w.location.hash = 'reports';
+    await h.until(() => h.document.querySelector('#content h1')?.textContent.includes('Báo cáo đã lưu'));
+    release();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(h.document.querySelector('.connection-meta'), null);
+    assert.deepEqual(h.errors, []);
+  } finally { release?.(); h.close(); }
+});
+
 test('Session expiry clears the previous user dataset before a different account logs in', async () => {
   const h = await harness(); try {
     h.w.location.hash = 'analysis'; await h.until(() => h.document.querySelector('#analysis-form'));
@@ -922,7 +1064,7 @@ async function openReportBuilderConfiguration(h, dataset, name = 'Preview test')
   await h.until(() => h.document.querySelector('.report-builder-section-list'));
 }
 
-test('Report Builder preview uses the persisted bundle order and deduplicates real Dataset loads', async () => {
+test('Report Builder preview reads the saved revision and deduplicates Dataset reads in persisted section order', async () => {
   const seoDataset = {
     id: 'dataset-preview-seo',
     params: { report_type: 'seo', start: '2026-09-01', end: '2026-09-28', compare: false },
@@ -955,6 +1097,8 @@ test('Report Builder preview uses the persisted bundle order and deduplicates re
     h.document.querySelector('[data-report-section-toggle="seo"]').click();
     h.document.querySelector('[data-report-section-toggle="gmb"]').click();
     h.document.querySelector('input[name="report-default-section"][value="gmb"]').click();
+    h.document.querySelector('[data-action="report-section-up"][data-section-key="gmb"]').click();
+    h.document.querySelector('[data-action="report-section-up"][data-section-key="gmb"]').click();
     h.document.querySelector('[data-action="report-builder-save-config"]').click();
     await h.until(() => h.document.querySelector('#toasts').textContent.includes('Đã lưu cấu hình section'));
     const before = h.requests.length;
@@ -963,8 +1107,8 @@ test('Report Builder preview uses the persisted bundle order and deduplicates re
 
     assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Xem trước');
     assert.deepEqual(Array.from(h.document.querySelectorAll('.report-builder-stepper li.complete strong'), step => step.textContent), ['Thông tin báo cáo', 'Chọn Dataset', 'Cấu hình nội dung']);
-    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-preview-section > header h2'), heading => heading.textContent), ['Tổng quan', 'Website Traffic & SEO', 'Google Maps & Hồ sơ doanh nghiệp']);
-    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-preview-navigation button'), button => button.textContent.replace(' ★', '')), ['1. Tổng quan', '2. Website Traffic & SEO', '3. Google Maps & Hồ sơ doanh nghiệp']);
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-preview-section > header h2'), heading => heading.textContent), ['Google Maps & Hồ sơ doanh nghiệp', 'Tổng quan', 'Website Traffic & SEO']);
+    assert.deepEqual(Array.from(h.document.querySelectorAll('.report-preview-navigation button'), button => button.textContent.replace(' ★', '')), ['1. Google Maps & Hồ sơ doanh nghiệp', '2. Tổng quan', '3. Website Traffic & SEO']);
     assert.match(h.document.querySelector('.report-preview-section#report-preview-gmb').textContent, /Trang mặc định/);
     assert.match(h.document.querySelector('.report-preview-section#report-preview-seo').textContent, /Google Analytics 4/);
     assert.match(h.document.querySelector('.report-preview-section#report-preview-seo').textContent, /Search Console/);
@@ -975,9 +1119,14 @@ test('Report Builder preview uses the persisted bundle order and deduplicates re
     assert.match(h.document.querySelector('.report-builder-preview').textContent, /báo cáo chưa được xuất bản/);
     assert.equal(h.document.querySelectorAll('.report-preview-section input, .report-preview-section select, .report-preview-section textarea').length, 0);
     assert.equal(h.document.querySelector('[data-action="publish-confirm"]'), null);
-    assert.equal(h.requests.slice(before).filter(request => request.method === 'GET' && request.path === `/api/datasets/${seoDataset.id}`).length, 1);
-    assert.equal(h.requests.slice(before).filter(request => request.method === 'GET' && request.path === `/api/datasets/${gmbDataset.id}`).length, 1);
-    assert.equal(h.requests.slice(before).some(request => /\/api\/(google|analyses|sync|providers|facebook|tiktok|youtube)/.test(request.path)), false);
+    assert.deepEqual(h.requests.slice(before), [
+      { path: '/api/report-bundles/rpt_test_bundle?revision=1', method: 'GET', body: undefined },
+      { path: `/api/datasets/${gmbDataset.id}`, method: 'GET', body: undefined },
+      { path: `/api/datasets/${seoDataset.id}`, method: 'GET', body: undefined }
+    ]);
+    assert.equal(h.document.querySelectorAll('.report-preview-assignments li').length, 3);
+    assert.match(h.document.querySelector('.report-preview-assignments').textContent, /dataset-preview-seo/);
+    assert.equal(h.document.querySelectorAll('.report-builder-preview [data-action*="publish"], .report-builder-preview [data-action*="save"], .report-builder-preview [data-action*="export"]').length, 0);
     h.document.querySelector('[data-action="report-builder-preview-back"]').click();
     assert.equal(h.document.querySelector('.report-builder-stepper li[aria-current="step"] strong').textContent, 'Cấu hình nội dung');
     assert.deepEqual(h.errors, []);
@@ -996,7 +1145,7 @@ test('Report Builder preview warns and blocks content when a referenced Dataset 
     jobs: [{ id: 'job-preview-missing-ref', dataset_id: dataset.id }],
     datasetRecords: { [dataset.id]: dataset },
     reportBundleDetail: {
-      report: { id: 'rpt_preview_missing', revision: 1, status: 'draft', name: 'Missing Dataset test' },
+      report: { id: 'rpt_test_bundle', revision: 1, status: 'draft', name: 'Missing Dataset test' },
       client: { id: 'client_kinderhealth', name: 'KinderHealth' },
       period: { start: dataset.params.start, end: dataset.params.end },
       comparison: null,
@@ -1028,13 +1177,13 @@ test('Report Builder preview warns about period mismatch and invalid default wit
     jobs: [{ id: 'job-preview-period', dataset_id: dataset.id }],
     datasetRecords: { [dataset.id]: dataset },
     reportBundleDetail: {
-      report: { id: 'rpt_preview_period', revision: 1, status: 'draft', name: 'Period mismatch test' },
+      report: { id: 'rpt_test_bundle', revision: 1, status: 'draft', name: 'Period mismatch test' },
       client: { id: 'client_kinderhealth', name: 'KinderHealth' },
       period: { start: '2026-09-02', end: '2026-09-29' },
       comparison: null,
       quality: { warnings: [] },
       navigation: { default_section: 'overview', sections: ['seo'] },
-      sections: { seo: { dataset_id: dataset.id, position: 0 } }
+      sections: { seo: { dataset_id: dataset.id, position: 0, data: dataset, report_type: 'seo', valid: true } }
     }
   });
   try {
@@ -1047,4 +1196,272 @@ test('Report Builder preview warns about period mismatch and invalid default wit
     assert.doesNotMatch(h.document.querySelector('.report-preview-quality').textContent, /Sẵn sàng cho bước tiếp theo/);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
+});
+
+function previewFixture(type = 'gmb') {
+  const dataset = {
+    id: 'preview-fixture', params: { report_type: type, start: '2026-09-01', end: '2026-09-28', compare: false },
+    exportable: true, sources: { [type]: { status: 'ready', totals: { calls: 0 }, entries: [] } }
+  };
+  const bundle = {
+    report: { id: 'rpt_test_bundle', revision: 1, status: 'draft', name: 'Preview regression fixture' },
+    client: { id: 'client_kinderhealth', name: 'KinderHealth' },
+    period: { start: dataset.params.start, end: dataset.params.end }, comparison: null,
+    quality: { status: 'complete', warnings: [] },
+    navigation: { default_section: type, sections: [type] },
+    sections: { [type]: { dataset_id: dataset.id, position: 0, report_type: type, valid: true, data: dataset } }
+  };
+  return { dataset, bundle, options: { jobs: [{ id: 'fixture-job', dataset_id: dataset.id }], datasetRecords: { [dataset.id]: dataset }, reportBundleDetail: bundle } };
+}
+
+test('Preview preserves missing metrics, real zero values, partial quality and escaped source text', async () => {
+  const { dataset, bundle, options } = previewFixture();
+  bundle.quality.status = 'partial';
+  bundle.sections.gmb.valid = false;
+  dataset.exportable = false;
+  Object.assign(bundle.sections.gmb.data.sources.gmb, {
+    status: 'delayed', warnings: ['Fixture: incomplete period'],
+    totals: { calls: 0, directions: null }, entries: [{ name: '<img src=x onerror=alert(1)>', calls: 0 }]
+  });
+  const h = await harness(options); try {
+    await openReportBuilderConfiguration(h, dataset);
+    const before = h.requests.length;
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-preview-canvas'));
+    assert.deepEqual(Array.from(h.document.querySelectorAll('#report-preview-gmb .kpi strong'), node => node.textContent), ['—', '0', '—', '—']);
+    assert.match(h.document.querySelector('.report-preview-quality').textContent, /partial/);
+    assert.match(h.document.querySelector('.report-preview-quality').textContent, /Fixture: incomplete period/);
+    assert.doesNotMatch(h.document.querySelector('.report-preview-quality').textContent, /Không có cảnh báo/);
+    assert.equal(h.document.querySelector('#report-preview-gmb img'), null);
+    assert.match(h.document.querySelector('#report-preview-gmb').textContent, /<img src=x onerror=alert\(1\)>/);
+    h.document.querySelector('[data-action="report-builder-preview-back-dataset"]').click();
+    assert.match(h.document.querySelector('[aria-current="step"]').textContent, /Chọn Dataset/);
+    assert.equal(h.requests.slice(before).every(request => request.method === 'GET'), true);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+test('Preview renders stored non-Google totals without a provider integration', async () => {
+  const { dataset, bundle, options } = previewFixture('youtube');
+  bundle.sections.youtube.data.sources.youtube.totals = { views: 37, watch_minutes: null };
+  const h = await harness(options); try {
+    await openReportBuilderConfiguration(h, dataset);
+    const before = h.requests.length;
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('#report-preview-youtube'));
+    assert.match(h.document.querySelector('#report-preview-youtube').textContent, /37/);
+    assert.match(h.document.querySelector('#report-preview-youtube').textContent, /watch_minutes/);
+    assert.equal(h.requests.slice(before).length, 2);
+    assert.equal(h.requests.at(-1).path, '/api/datasets/' + dataset.id);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+for (const [label, change, expected] of [
+  ['demo Dataset', bundle => { bundle.sections.gmb.data.params.demo = true; }, /Dataset DEMO/],
+  ['demo source', bundle => { bundle.sections.gmb.data.sources.gmb.demo = true; }, /Dataset DEMO/],
+  ['wrong client', bundle => { bundle.sections.gmb.data.params.client_id = 'another-client'; }, /không thuộc khách hàng/],
+  ['wrong Dataset identity', bundle => { bundle.sections.gmb.data.id = 'another-dataset'; }, /Dataset ID không khớp/],
+  ['incompatible Dataset', bundle => { bundle.sections.gmb.report_type = 'seo'; }, /không tương thích/],
+  ['unknown section', bundle => { bundle.navigation = { sections: ['ga4'], default_section: 'ga4' }; bundle.sections.ga4 = bundle.sections.gmb; }, /không thuộc registry/],
+  ['duplicate section', bundle => { bundle.navigation.sections.push('gmb'); }, /trùng lặp/]
+]) {
+  test(`Preview blocks ${label} without rendering business contents`, async () => {
+    const { dataset, bundle, options } = previewFixture();
+    const h = await harness(options); try {
+      await openReportBuilderConfiguration(h, dataset);
+      change(bundle);
+      h.document.querySelector('[data-action="report-builder-preview"]').click();
+      await h.until(() => h.document.querySelector('.report-preview-blocked'));
+      assert.match(h.document.querySelector('.report-preview-blocked').textContent, expected);
+      assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  });
+}
+
+test('Builder excludes demo Dataset preselection without changing the Analysis demo workflow', async () => {
+  const { dataset, options } = previewFixture();
+  dataset.params.demo = true;
+  const h = await harness(options); try {
+    h.w.location.hash = `report-builder?dataset=${dataset.id}`;
+    await h.until(() => h.document.querySelector('.report-builder-page'));
+    assert.match(h.document.querySelector('#content').textContent, /Dataset DEMO/);
+    assert.equal(h.document.querySelector('[name="report-builder-dataset"]'), null);
+    assert.equal(h.requests.some(request => request.method !== 'GET'), false);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+for (const status of ['provisional', 'final']) {
+  test(`Preview refuses a draft that has changed to ${status}`, async () => {
+    const { dataset, bundle, options } = previewFixture();
+    const h = await harness(options); try {
+      await openReportBuilderConfiguration(h, dataset);
+      bundle.report.status = status;
+      const before = h.requests.length;
+      h.document.querySelector('[data-action="report-builder-preview"]').click();
+      await h.until(() => h.document.querySelector('.report-builder-card .notice.red'));
+      assert.match(h.document.querySelector('.notice.red').textContent, /DRAFT/);
+      assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+      assert.deepEqual(h.requests.slice(before), [{ path: '/api/report-bundles/rpt_test_bundle?revision=1', method: 'GET', body: undefined }]);
+      h.document.querySelector('[data-action="report-builder-preview-back"]').click();
+      assert.equal(h.document.querySelector('[data-action="report-builder-save-config"]').disabled, true);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  });
+}
+
+test('Preview does not silently switch to a different revision', async () => {
+  const { dataset, bundle, options } = previewFixture();
+  const h = await harness(options); try {
+    await openReportBuilderConfiguration(h, dataset);
+    bundle.report.revision = 2;
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.notice.red'));
+    assert.match(h.document.querySelector('.notice.red').textContent, /không khớp bản nháp/);
+    assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+for (const status of [401, 403, 404, 500]) {
+  test(`Preview handles HTTP ${status} without leaving a loading screen or stale contents`, async () => {
+    const { dataset, options } = previewFixture();
+    const error = {};
+    const h = await harness({ ...options, reportBundleReadError: error }); try {
+      await openReportBuilderConfiguration(h, dataset);
+      Object.assign(error, { status, message: `Fixture HTTP ${status}` });
+      h.document.querySelector('[data-action="report-builder-preview"]').click();
+      await h.until(() => status === 401 ? h.document.querySelector('#auth-form') : h.document.querySelector('.report-builder-card .notice.red'));
+      if (status !== 401) assert.match(h.document.querySelector('.notice.red').textContent, status === 404 ? /Không tìm thấy báo cáo/ : new RegExp(`Fixture HTTP ${status}`));
+      assert.equal(h.document.querySelector('.report-preview-canvas, .report-builder-card .spinner'), null);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  });
+}
+
+test('Canceled Preview responses cannot overwrite configuration or a newer Preview', async () => {
+  const { dataset, bundle, options } = previewFixture();
+  const h = await harness(options); let release;
+  try {
+    await openReportBuilderConfiguration(h, dataset);
+    release = h.hold('/api/report-bundles/rpt_test_bundle?revision=1');
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-builder-card .spinner'));
+    h.document.querySelector('[data-action="report-builder-preview-back"]').click();
+    assert.ok(h.document.querySelector('.report-builder-section-list'));
+    release();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.ok(h.document.querySelector('.report-builder-section-list'));
+    assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+    bundle.report.name = 'Newly loaded saved draft';
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-preview-summary'));
+    assert.match(h.document.querySelector('.report-preview-summary').textContent, /Newly loaded saved draft/);
+    assert.deepEqual(h.errors, []);
+  } finally { release?.(); h.close(); }
+});
+
+test('Preview navigation and session expiry discard in-flight snapshot responses', async () => {
+  for (const expire of [false, true]) {
+    const { dataset, options } = previewFixture();
+    const h = await harness(options); let release;
+    try {
+      await openReportBuilderConfiguration(h, dataset);
+      release = h.hold('/api/report-bundles/rpt_test_bundle?revision=1');
+      h.document.querySelector('[data-action="report-builder-preview"]').click();
+      await h.until(() => h.document.querySelector('.report-builder-card .spinner'));
+      if (expire) h.expireAs('viewer');
+      h.w.location.hash = 'overview';
+      await h.until(() => expire ? h.document.querySelector('#auth-form') : h.document.querySelector('h1')?.textContent === 'Tổng quan');
+      release();
+      await new Promise(resolve => setTimeout(resolve, 20));
+      assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+      if (!expire) {
+        h.w.location.hash = 'report-builder';
+        await h.until(() => h.document.querySelector('.report-builder-card .notice.red'));
+        assert.match(h.document.querySelector('.notice.red').textContent, /Đã hủy tải/);
+      }
+      assert.deepEqual(h.errors, []);
+    } finally { release?.(); h.close(); }
+  }
+});
+
+test('Preview refuses changed snapshot contents instead of silently showing different business data', async () => {
+  const { dataset, bundle, options } = previewFixture();
+  bundle.sections.gmb.data = structuredClone(dataset);
+  const h = await harness(options); try {
+    await openReportBuilderConfiguration(h, dataset);
+    dataset.sources.gmb.totals.calls = 999999;
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.document.querySelector('.report-preview-blocked'));
+    assert.match(h.document.querySelector('.report-preview-blocked').textContent, /không khớp snapshot đã lưu/);
+    assert.equal(h.document.querySelector('.report-preview-section'), null);
+    assert.doesNotMatch(h.document.querySelector('.report-builder-preview').textContent, /999[.,]?999/);
+    assert.deepEqual(h.errors, []);
+  } finally { h.close(); }
+});
+
+for (const comparisonCase of ['matching', 'mismatched', 'missing', 'unconfigured']) {
+  test(`Preview shows the saved comparison period with ${comparisonCase} Dataset comparison metadata`, async () => {
+    const { dataset, bundle, options } = previewFixture();
+    bundle.comparison = comparisonCase === 'unconfigured' ? null : { start: '2026-08-04', end: '2026-08-31' };
+    Object.assign(dataset.params, {
+      compare: comparisonCase !== 'missing', previous_start: comparisonCase === 'mismatched' ? '2026-08-01' : '2026-08-04', previous_end: '2026-08-31'
+    });
+    dataset.sources.gmb.previous = { calls: 3 };
+    dataset.warnings = ['Fixture Dataset warning'];
+    const h = await harness(options); try {
+      await openReportBuilderConfiguration(h, dataset);
+      h.document.querySelector('[data-action="report-builder-preview"]').click();
+      await h.until(() => h.document.querySelector('.report-preview-canvas'));
+      assert.match(h.document.querySelector('.report-preview-summary').textContent, comparisonCase === 'unconfigured' ? /Không cấu hình/ : /04\/08\/2026 → 31\/08\/2026/);
+      assert.match(h.document.querySelector('.report-preview-warnings').textContent, /Fixture Dataset warning/);
+      const section = h.document.querySelector('#report-preview-gmb');
+      if (comparisonCase === 'matching') assert.match(section.textContent, /Kỳ trước: 3/);
+      else assert.doesNotMatch(section.textContent, /Kỳ trước:/);
+      if (['missing', 'mismatched'].includes(comparisonCase)) assert.match(h.document.querySelector('.report-preview-warnings').textContent, /thiếu hoặc không khớp kỳ so sánh/);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  });
+}
+
+for (const status of [401, 403, 404, 500]) {
+  test(`Preview handles Dataset HTTP ${status} without falling back to inline or invented data`, async () => {
+    const { dataset, options } = previewFixture();
+    const errors = {};
+    const h = await harness({ ...options, datasetErrors: errors }); try {
+      await openReportBuilderConfiguration(h, dataset);
+      errors[dataset.id] = { status, message: `Dataset HTTP ${status}` };
+      const before = h.requests.length;
+      h.document.querySelector('[data-action="report-builder-preview"]').click();
+      await h.until(() => status === 401 ? h.document.querySelector('#auth-form') : h.document.querySelector('.report-preview-blocked'));
+      assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+      if (status !== 401) assert.match(h.document.querySelector('.report-preview-warnings').textContent, status === 404 ? /Không tìm thấy Dataset/ : new RegExp(`Dataset HTTP ${status}`));
+      assert.deepEqual(h.requests.slice(before).map(request => [request.method, request.path]), [
+        ['GET', '/api/report-bundles/rpt_test_bundle?revision=1'], ['GET', '/api/datasets/' + dataset.id]
+      ]);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  });
+}
+
+test('Preview discards Dataset responses after returning to configuration', async () => {
+  const { dataset, options } = previewFixture();
+  const h = await harness(options); let release;
+  try {
+    await openReportBuilderConfiguration(h, dataset);
+    const before = h.requests.length;
+    release = h.hold('/api/datasets/' + dataset.id);
+    h.document.querySelector('[data-action="report-builder-preview"]').click();
+    await h.until(() => h.requests.slice(before).some(request => request.path === '/api/datasets/' + dataset.id));
+    assert.ok(h.document.querySelector('.report-builder-card .spinner'));
+    h.document.querySelector('[data-action="report-builder-preview-back"]').click();
+    release();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.ok(h.document.querySelector('.report-builder-section-list'));
+    assert.equal(h.document.querySelector('.report-preview-canvas'), null);
+    assert.deepEqual(h.errors, []);
+  } finally { release?.(); h.close(); }
 });

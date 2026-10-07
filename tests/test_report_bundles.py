@@ -82,6 +82,53 @@ class BundleCases:
         self.assertEqual(payload['sections']['seo']['data'], original)
         self.assertIsNone(payload['sections']['seo']['data']['sources']['ga4']['totals']['activeUsers'])
 
+    def test_admin_draft_preview_reads_captured_revision_without_writes_or_provider_calls(self):
+        report_id = self.create()
+        path = f'/api/report-bundles/{report_id}?revision=1'
+        original = self.client.get(path).json
+        # Simulate an out-of-band legacy row change; the saved draft must not drift.
+        self.store.execute('UPDATE datasets SET data=? WHERE id=?', (pack({'changed': True}), self.dataset_id))
+        before = {table: self.store.all('SELECT * FROM ' + table) for table in
+                  ('datasets', 'report_bundles', 'report_bundle_sections', 'jobs', 'events')}
+        with patch.object(self.app.extensions['google'], 'fetch', side_effect=AssertionError('Preview called a provider')) as fetch, \
+             patch('kdh.google.requests.request', side_effect=AssertionError('Preview made an external request')) as request:
+            response = self.client.get(path)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, original)
+        self.assertEqual(response.json['report']['status'], 'draft')
+        self.assertEqual(response.json['navigation']['sections'], ['overview', 'seo'])
+        self.assertEqual(response.json['sections']['seo']['data']['sources']['ga4']['totals']['sessions'], 24_000_000)
+        fetch.assert_not_called()
+        request.assert_not_called()
+        for table, rows in before.items():
+            self.assertEqual(self.store.all('SELECT * FROM ' + table), rows, table)
+
+    def test_preview_reads_persisted_section_assignments_and_datasets_without_mutation(self):
+        report_id = self.create()
+        sections = list(reversed(self.fields['sections']))
+        response = self.client.patch(f'/api/report-bundles/{report_id}/revisions/1',
+                                     json={'sections': sections, 'default_section': 'seo'}, headers=self.headers)
+        self.assertEqual(response.status_code, 200)
+        before = {table: self.store.all('SELECT * FROM ' + table) for table in
+                  ('datasets', 'report_bundles', 'report_bundle_sections', 'jobs', 'events')}
+        with patch.object(self.app.extensions['google'], 'fetch', side_effect=AssertionError('Preview called a provider')), \
+             patch('kdh.google.requests.request', side_effect=AssertionError('Preview made an external request')):
+            bundle = self.client.get(f'/api/report-bundles/{report_id}?revision=1').json
+            self.assertEqual(bundle['report']['status'], 'draft')
+            self.assertEqual(bundle['report']['revision'], 1)
+            self.assertEqual(bundle['navigation'], {'default_section': 'seo', 'sections': ['seo', 'overview']})
+            for row in before['report_bundle_sections']:
+                section = bundle['sections'][row['section_key']]
+                self.assertEqual((section['dataset_id'], section['position']), (row['dataset_id'], row['position']))
+            for dataset_id in {section['dataset_id'] for section in bundle['sections'].values()}:
+                response = self.client.get('/api/datasets/' + dataset_id)
+                self.assertEqual(response.status_code, 200)
+                dataset = response.json
+                self.assertTrue(dataset.pop('exportable'))
+                self.assertEqual(dataset, bundle['sections']['seo']['data'])
+        for table, rows in before.items():
+            self.assertEqual(self.store.all('SELECT * FROM ' + table), rows, table)
+
     def test_validation_is_atomic_and_does_not_accept_inline_data(self):
         cases = [
             {'default_section':'absent'}, {'default_section':[]}, {'sections':[]}, {'sections':None},

@@ -123,13 +123,14 @@ function reportPreviewSections(bundle) {
     const orderedKeys = Array.isArray(bundle?.navigation?.sections)
         ? bundle.navigation.sections
         : Object.entries(sectionData).sort((a, b) => (a[1]?.position ?? 0) - (b[1]?.position ?? 0)).map(([key]) => key);
-    return orderedKeys.map(key => ({ key, ...(sectionData[key] || {}) }));
+    return orderedKeys.map(key => ({ ...(sectionData[key] || {}), key }));
 }
 
 function reportPreviewWarnings(builder, bundle, sections, datasets, datasetErrors) {
     const warnings = [];
     const add = value => { if (typeof value === 'string' && value.trim()) warnings.push(value.trim()); };
     for (const warning of bundle?.quality?.warnings || []) add(warning);
+    if (bundle?.quality?.status !== 'complete') add(`Chất lượng Report Bundle: ${bundle?.quality?.status || 'chưa xác định'}.`);
     const included = new Set(sections.map(section => section.key));
     if (!included.size) add('Bản nháp chưa có section được đưa vào báo cáo.');
     if (!included.has(bundle?.navigation?.default_section)) add('Trang mặc định không nằm trong danh sách section được đưa vào báo cáo.');
@@ -144,12 +145,14 @@ function reportPreviewWarnings(builder, bundle, sections, datasets, datasetError
         }
         const dataset = datasets[section.dataset_id];
         if (!dataset) continue;
+        for (const warning of dataset.warnings || []) add(`${section.key}: ${warning}`);
         const params = dataset.params || {};
         const reportPeriod = bundle.period || {};
         if (params.start !== reportPeriod.start || params.end !== reportPeriod.end) {
             add(`Dataset ${section.key} không trùng hoàn toàn với kỳ báo cáo.`);
         }
-        if (dataset.exportable === false) add(`Dataset ${section.key} cần kiểm tra theo trạng thái backend.`);
+        if (dataset.exportable !== true) add(`Dataset ${section.key} cần kiểm tra theo trạng thái backend.`);
+        if (!Object.keys(dataset.sources || {}).length) add(`Dataset ${section.key} không có dữ liệu nguồn.`);
         const hasComparison = !!bundle.comparison;
         if (hasComparison && (params.compare !== true ||
             params.previous_start !== bundle.comparison.start ||
@@ -157,7 +160,7 @@ function reportPreviewWarnings(builder, bundle, sections, datasets, datasetError
             add(`Dataset ${section.key} thiếu hoặc không khớp kỳ so sánh.`);
         }
         for (const [sourceKey, source] of Object.entries(dataset.sources || {})) {
-            if (source?.status && source.status !== 'ready') add(`${section.key} · ${sourceNames[sourceKey] || source.source || sourceKey}: ${source.status}.`);
+            if (source?.status !== 'ready') add(`${section.key} · ${sourceNames[sourceKey] || source?.source || sourceKey}: ${source?.status || 'chưa xác định'}.`);
             add(source?.error);
             for (const warning of source?.warnings || []) add(warning);
         }
@@ -170,12 +173,13 @@ function reportPreviewSource(sourceKey, source, params) {
     source = source && typeof source === 'object' ? source : {};
     if (['ga4', 'gsc', 'keywords', 'gmb'].includes(sourceKey)) return sourceSection(sourceKey, source, params, true);
     const rows = source.entries || source.daily || source.queries || [];
-    return `<section class="source-section"><div class="section-title"><h3>${esc(sourceNames[sourceKey] || source.source || sourceKey)}</h3>${source.status ? badge(source.status) : ''}</div>${source.error ? notice(source.error, 'red') : ''}${(source.warnings || []).map(warning => notice(warning, 'amber')).join('')}${rows.length ? dataTable(rows.slice(0, 8), 'Dữ liệu có trong Dataset') : empty('Không có dữ liệu chi tiết', 'Dataset không chứa hàng dữ liệu để xem trước.')}</section>`;
+    const totals = source.totals && Object.keys(source.totals).length ? dataTable([source.totals], 'Chỉ số trong Dataset') : '';
+    return `<section class="source-section"><div class="section-title"><h3>${esc(sourceNames[sourceKey] || source.source || sourceKey)}</h3>${source.status ? badge(source.status) : ''}</div>${source.error ? notice(source.error, 'red') : ''}${(source.warnings || []).map(warning => notice(warning, 'amber')).join('')}${totals}${rows.length ? dataTable(rows, 'Dữ liệu có trong Dataset') : empty('Không có dữ liệu chi tiết', 'Dataset không chứa hàng dữ liệu để xem trước.')}</section>`;
 }
 
 export function reportBuilderPreviewView(builder, types) {
     const preview = builder.preview;
-    if (builder.previewLoading) return `<section class="card report-builder-card"><div class="empty"><span class="spinner"></span><h2>Đang tải bản xem trước</h2><p>Đang đọc Report Bundle và các Dataset snapshot đã gán.</p></div></section>`;
+    if (builder.previewLoading) return `<section class="card report-builder-card"><div class="empty" role="status"><span class="spinner"></span><h2>Đang tải bản xem trước</h2><p>Đang đọc Report Bundle và các Dataset snapshot đã gán.</p></div><div class="report-builder-actions">${button('Quay lại cấu hình', 'report-builder-preview-back', 'secondary')}</div></section>`;
     if (builder.previewError) {
         return `<section class="card report-builder-card">${notice(builder.previewError, 'red')}<div class="report-builder-actions">${button('Quay lại cấu hình', 'report-builder-preview-back', 'secondary')}</div></section>`;
     }
@@ -196,11 +200,13 @@ export function reportBuilderPreviewView(builder, types) {
     const orderedKeys = new Set(sections.map(section => section.key));
     const invalidDefault = !orderedKeys.has(bundle.navigation?.default_section);
     const reportTypeLabel = type => types.find(item => item.id === type)?.label || type || '—';
-    const sectionCards = sections.map((section, index) => {
+    const sectionCards = invalid ? '' : sections.map((section, index) => {
         const definition = reportSectionDefinitions.find(item => item.key === section.key);
         const datasetId = section.dataset_id || '';
         const dataset = datasets[datasetId];
         const params = dataset?.params || {};
+        const sourceParams = { ...params, compare: !!comparison && params.compare === true &&
+            params.previous_start === comparison.start && params.previous_end === comparison.end };
         const type = dataset?.report_type || params.report_type || section.report_type;
         const sectionWarnings = [];
         if (datasetErrors[datasetId]) sectionWarnings.push(datasetErrors[datasetId]);
@@ -210,7 +216,7 @@ export function reportBuilderPreviewView(builder, types) {
         const content = section.key === 'overview'
             ? `<div class="report-preview-overview-metrics"><article><span>Kỳ dữ liệu</span><strong>${period.start && period.end ? `${date(period.start)} → ${date(period.end)}` : '—'}</strong></article><article><span>Section trong báo cáo</span><strong>${sections.length}</strong></article><article><span>Dataset snapshot</span><strong>${uniqueIds.length}</strong></article><article><span>Nguồn sẵn sàng</span><strong>${readySources} / ${sources.length}</strong></article><article><span>Cảnh báo</span><strong>${warnings.length}</strong></article></div>`
             : dataset
-                ? sourceKeys.map(key => reportPreviewSource(key, dataset.sources[key], params)).join('') || empty('Không có dữ liệu nguồn', 'Dataset không chứa nguồn dữ liệu để xem trước.')
+                ? sourceKeys.map(key => reportPreviewSource(key, dataset.sources[key], sourceParams)).join('') || empty('Không có dữ liệu nguồn', 'Dataset không chứa nguồn dữ liệu để xem trước.')
                 : empty('Không tải được Dataset', 'Section vẫn được giữ trong thứ tự đã lưu; nội dung không thể hiển thị khi Dataset không khả dụng.');
         const status = dataset ? dataset.exportable === true ? '<span class="badge green">Hợp lệ</span>' : dataset.exportable === false ? '<span class="badge amber">Cần kiểm tra</span>' : '<span class="badge neutral">Chưa xác định</span>' : '<span class="badge red">Không khả dụng</span>';
         const compactId = datasetId.length > 18 ? `${datasetId.slice(0, 8)}…${datasetId.slice(-6)}` : datasetId || '—';
@@ -219,7 +225,7 @@ export function reportBuilderPreviewView(builder, types) {
     }).join('');
     const invalidNotices = (builder.previewValidationErrors || []).map(message => notice(message, 'red')).join('');
     const summary = `<section class="report-preview-summary"><div><span>Tên báo cáo</span><strong>${esc(report.name || '—')}</strong></div><div><span>Khách hàng</span><strong>${esc(bundle.client?.name || '—')}</strong></div><div><span>Kỳ báo cáo</span><strong>${period.start && period.end ? `${date(period.start)} → ${date(period.end)}` : '—'}</strong></div><div><span>Kỳ so sánh</span><strong>${comparison?.start && comparison?.end ? `${date(comparison.start)} → ${date(comparison.end)}` : 'Không cấu hình'}</strong></div><div><span>Revision</span><strong>${report.revision ?? '—'}</strong></div><div><span>Trạng thái</span><strong>${report.status === 'draft' ? '<span class="badge amber">BẢN NHÁP</span>' : '<span class="badge neutral">Chỉ hỗ trợ bản nháp</span>'}</strong></div>${bundle.freshness?.generated_at ? `<div><span>Snapshot tạo lúc</span><strong>${time(bundle.freshness.generated_at)}</strong></div>` : ''}</section>`;
-    const quality = `<section class="report-preview-quality"><header><div><span class="eyebrow">DATA QUALITY</span><h2>Chất lượng dữ liệu</h2></div><span class="badge ${warnings.length ? 'amber' : 'green'}">${warnings.length ? 'Cần kiểm tra dữ liệu' : 'Sẵn sàng cho bước tiếp theo'}</span></header><div class="report-preview-quality-grid"><article><span>Section</span><strong>${sections.length}</strong></article><article><span>Dataset hợp lệ</span><strong>${loadedDatasets.filter(dataset => dataset.exportable === true).length} / ${uniqueIds.length}</strong></article><article><span>Nguồn sẵn sàng</span><strong>${readySources} / ${sources.length}</strong></article><article><span>Cảnh báo</span><strong>${warnings.length}</strong></article></div>${warnings.length ? `<div class="report-preview-warnings" role="status">${warnings.map(warning => notice(warning, 'amber')).join('')}</div>` : ''}</section>`;
+    const quality = `<section class="report-preview-quality"><header><div><span class="eyebrow">DATA QUALITY</span><h2>Chất lượng dữ liệu</h2></div><span class="badge ${warnings.length ? 'amber' : 'green'}">${warnings.length ? 'Cần kiểm tra dữ liệu' : 'Không có cảnh báo từ snapshot'}</span></header><div class="report-preview-quality-grid"><article><span>Section</span><strong>${sections.length}</strong></article><article><span>Dataset hợp lệ</span><strong>${loadedDatasets.filter(dataset => dataset.exportable === true).length} / ${uniqueIds.length}</strong></article><article><span>Nguồn sẵn sàng</span><strong>${readySources} / ${sources.length}</strong></article><article><span>Cảnh báo</span><strong>${warnings.length}</strong></article></div>${warnings.length ? `<div class="report-preview-warnings" role="status">${warnings.map(warning => notice(warning, 'amber')).join('')}</div>` : ''}</section>`;
     const navigation = `<nav class="report-preview-navigation" aria-label="Thứ tự section">${sections.map((section, index) => {
         const definition = reportSectionDefinitions.find(item => item.key === section.key);
         return `<button type="button" class="btn text" data-action="report-preview-section" data-target="report-preview-${esc(section.key)}">${index + 1}. ${esc(definition?.label || section.key)}${bundle.navigation?.default_section === section.key ? ' ★' : ''}</button>`;
@@ -227,7 +233,11 @@ export function reportBuilderPreviewView(builder, types) {
     const canvas = invalid || report.status !== 'draft' || invalidDefault
         ? `<section class="report-preview-blocked">${invalidNotices || notice('Cấu hình section không hợp lệ. Quay lại cấu hình để sửa trước khi xem nội dung.', 'red')}${report.status !== 'draft' ? notice('Bước xem trước này chỉ hỗ trợ Report Bundle ở trạng thái DRAFT.', 'amber') : ''}</section>`
         : `<section class="report-preview-canvas"><div class="report-preview-watermark">BẢN XEM TRƯỚC · ADMIN</div>${sectionCards || empty('Chưa có section', 'Bản nháp hiện chưa có section để xem trước.')}</section>`;
-    return `<section class="card report-builder-card report-builder-preview"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 4 · XEM TRƯỚC</span><h2>Xem trước nội dung báo cáo</h2><p>Kiểm tra cấu trúc và dữ liệu snapshot đã lưu. Đây là bản xem trước trong Admin; báo cáo chưa được xuất bản.</p></div>${report.status !== 'draft' ? notice('Chỉ có thể xem trước nội dung bản nháp trong bước này.', 'amber') : notice('Đây là bản xem trước trong Admin. Báo cáo chưa được xuất bản.', 'blue')}${summary}${invalidDefault ? notice('Cấu hình trang mặc định không hợp lệ. Preview nội dung bị khóa cho đến khi sửa cấu hình.', 'red') : ''}${quality}${navigation}${canvas}<div class="report-builder-actions">${button('Quay lại chọn Dataset', 'report-builder-preview-back-dataset', 'secondary')}${button('Quay lại cấu hình', 'report-builder-preview-back', 'primary')}</div></section>`;
+    const assignments = `<ol class="report-preview-assignments">${sections.map(section => {
+        const definition = reportSectionDefinitions.find(item => item.key === section.key);
+        return `<li><strong>${esc(definition?.label || section.key)}</strong>${section.key === bundle.navigation?.default_section ? '<span class="badge blue">Trang mặc định</span>' : ''}<span class="code">${esc(section.dataset_id || 'Chưa gán Dataset')}</span></li>`;
+    }).join('')}</ol>`;
+    return `<section class="card report-builder-card report-builder-preview"><div class="report-builder-card-heading"><span class="eyebrow">BƯỚC 4 · XEM TRƯỚC</span><h2>Xem trước nội dung báo cáo</h2><p>Kiểm tra cấu trúc và dữ liệu snapshot đã lưu. Đây là bản xem trước trong Admin; báo cáo chưa được xuất bản.</p></div>${notice('Đây là bản xem trước trong Admin. Báo cáo chưa được xuất bản.', 'blue')}<div class="report-preview-workspace"><aside class="report-preview-config" aria-label="Tóm tắt cấu hình"><h3>Tóm tắt cấu hình báo cáo</h3>${summary}<h3>Section &amp; Dataset</h3>${assignments}</aside><div class="report-preview-document"><header><h3>Xem trước báo cáo</h3><span class="badge neutral">Chỉ đọc</span></header>${navigation}${invalidDefault ? notice('Cấu hình trang mặc định không hợp lệ. Preview nội dung bị khóa cho đến khi sửa cấu hình.', 'red') : ''}${canvas}</div><aside class="report-preview-inspection" aria-label="Chất lượng snapshot">${quality}</aside></div><div class="report-builder-actions">${button('Quay lại chọn Dataset', 'report-builder-preview-back-dataset', 'secondary')}${button('Quay lại cấu hình', 'report-builder-preview-back', 'primary')}</div></section>`;
 }
 
 export function reportBuilderView(builder, types) {
@@ -574,7 +584,7 @@ export function syncView(jobs = [], overview = {}, user = {}, connection = null)
         ])) : empty('Chưa có lịch sử đồng bộ', 'Các lần kiểm tra nguồn đã chạy sẽ xuất hiện tại đây.')}</section>`;
 }
 
-export function connectionsView(d) {
+export function connectionsView(d, meta = {}) {
     const keys = ['ga4', 'gsc', 'keywords'];
     const attentionStatuses = ['permission_denied', 'api_error', 'invalid_data', 'incomplete', 'revoked', 'timeout'];
     const knownSources = keys.map(key => d.sources?.[key]).filter(source => source?.status);
@@ -594,21 +604,32 @@ export function connectionsView(d) {
                 const { source, status } = googleSourceStatus(d, key);
                 return `<article class="connection-source card"><div class="connection-card-title"><span class="source-icon ${key}">${icon(key === 'ga4' ? 'chart' : key === 'gsc' ? 'search' : 'file', 21)}</span><div><h2>${assetLabels[key]}</h2><p>${key === 'keywords' ? 'Google Sheets · bảng từ khóa' : 'Nguồn Google được cấp quyền'}</p></div>${badge(status)}</div><dl class="connection-facts"><div><dt>Tài khoản Google</dt><dd>${esc(d.connected ? d.email || 'Đã kết nối' : '—')}</dd></div><div><dt>Tài sản cấu hình</dt><dd>${esc(d.assets?.[key] || '—')}</dd></div><div><dt>Dữ liệu đến</dt><dd>${optionalDate(source.latest_available_date)}</dd></div><div><dt>Kiểm tra gần nhất</dt><dd>${optionalTime(source.fetched_at)}</dd></div>${source.error ? `<div><dt>Thông tin</dt><dd class="connection-error">${esc(source.error)}</dd></div>` : ''}</dl><div class="connection-provider-actions"><a class="btn text" href="#connections/google">Chi tiết nguồn ${icon('arrow', 14)}</a></div></article>`;
             }).join('')}
-            <article class="connection-source card connection-unsupported"><div class="connection-card-title"><span class="source-icon facebook">${icon('link', 21)}</span><div><h2>Meta</h2><p>Meta Ads · Facebook Pages</p></div><span class="badge neutral">Chưa tích hợp</span></div><dl class="connection-facts"><div><dt>Tài khoản / tài sản</dt><dd>—</dd></div><div><dt>Trạng thái</dt><dd>Chưa có tích hợp backend</dd></div></dl><div class="connection-provider-actions"><a class="btn text" href="#connections/facebook">Thông tin tích hợp ${icon('arrow', 15)}</a></div></article>
+            ${metaConnectionCard(meta)}
             <article class="connection-source card connection-unsupported"><div class="connection-card-title"><span class="source-icon tiktok">${icon('link', 21)}</span><div><h2>TikTok</h2><p>TikTok Ads</p></div><span class="badge neutral">Chưa tích hợp</span></div><dl class="connection-facts"><div><dt>Tài khoản / tài sản</dt><dd>—</dd></div><div><dt>Trạng thái</dt><dd>Chưa có tích hợp backend</dd></div></dl><div class="connection-provider-actions"><a class="btn text" href="#connections/tiktok">Thông tin tích hợp ${icon('arrow', 15)}</a></div></article>
             <article class="connection-source card connection-unsupported"><div class="connection-card-title"><span class="source-icon youtube">${icon('file', 21)}</span><div><h2>YouTube</h2><p>YouTube Analytics</p></div><span class="badge neutral">Chưa tích hợp</span></div><dl class="connection-facts"><div><dt>Tài khoản / tài sản</dt><dd>—</dd></div><div><dt>Trạng thái</dt><dd>Chưa có tích hợp backend</dd></div></dl><div class="connection-provider-actions"><span class="connection-unavailable">Chưa kết nối · —</span></div></article>
             <article class="connection-source card connection-manual"><div class="connection-card-title"><span class="source-icon gmb">${icon('upload', 21)}</span><div><h2>Google Business Profile</h2><p>Nhập dữ liệu CSV thủ công</p></div><span class="badge blue">Nhập thủ công</span></div><dl class="connection-facts"><div><dt>Tài khoản / tài sản</dt><dd>—</dd></div><div><dt>Trạng thái</dt><dd>Quản lý qua CSV</dd></div></dl><div class="connection-provider-actions"><a class="btn text" href="#uploads">Quản lý dữ liệu CSV ${icon('arrow', 15)}</a></div></article>
         </section>
-        <section class="card connection-help"><div class="card-body">${notice('Trạng thái nguồn Google phản ánh lần kiểm tra dữ liệu thực tế; trạng thái OAuth riêng lẻ không đảm bảo dữ liệu đã đồng bộ. Meta, TikTok và YouTube chưa có tích hợp backend.', 'blue')}</div></section>`;
+        <section class="card connection-help"><div class="card-body">${notice('Trạng thái nguồn Google phản ánh lần kiểm tra dữ liệu thực tế; trạng thái OAuth riêng lẻ không đảm bảo dữ liệu đã đồng bộ. Meta hỗ trợ kết nối OAuth; TikTok và YouTube chưa có tích hợp backend.', 'blue')}</div></section>`;
 }
 
-export function platformConnectionsView(d = {}) {
-    return connectionsView(d);
+function metaConnectionCard(d, detail = false) {
+    const labels = { connected: 'Đã kết nối OAuth', disconnected: 'Chưa kết nối', expired: 'Quyền đã hết hạn', reconnect_required: 'Cần kết nối lại', error: 'Không đọc được kết nối' };
+    return `<article class="connection-source card connection-meta"><div class="connection-card-title"><span class="source-icon facebook">${icon('link', 21)}</span><div><h2>Meta</h2><p>Facebook Content · Facebook Ads</p></div><span class="badge ${d.connected ? 'green' : 'neutral'}">${esc(labels[d.status] || 'Chưa có trạng thái')}</span></div>
+        ${!d.configured ? notice('Chưa cấu hình Meta OAuth. Quản trị hệ thống cần thiết lập App ID, App Secret, Config ID và redirect URI ở backend.', 'amber') : ''}
+        ${d.status === 'error' ? notice('Không thể đọc thông tin kết nối đã lưu. Kiểm tra khóa mã hóa ở backend hoặc ngắt kết nối và cấp quyền lại.', 'amber') : ''}
+        <dl class="connection-facts"><div><dt>Tài khoản</dt><dd>${esc(d.account_name || '—')}</dd></div><div><dt>ID tài khoản</dt><dd>${esc(d.account_id || '—')}</dd></div><div><dt>Ngày kết nối</dt><dd>${optionalTime(d.connected_at)}</dd></div><div><dt>Hết hạn token</dt><dd>${optionalTime(d.expires_at)}</dd></div>${detail ? `<div><dt>Hết hạn truy cập dữ liệu</dt><dd>${optionalTime(d.data_access_expires_at)}</dd></div><div><dt>Quyền đã xác nhận</dt><dd>${esc(d.scopes?.join(', ') || '—')}</dd></div>` : ''}</dl>
+        ${d.connected ? '<p class="form-note">Đã xác thực Meta. Chưa chọn tài sản dữ liệu.</p>' : ''}
+        <p class="form-note">Trạng thái từ lần cấp quyền đã lưu; chưa kiểm tra thu hồi tại Meta. Chưa khám phá tài sản hoặc đồng bộ dữ liệu Facebook.</p>
+        <div class="connection-provider-actions">${button(d.has_connection ? 'Kết nối lại Meta' : 'Kết nối Meta', 'connect-facebook', 'primary', d.configured ? '' : 'disabled')}${d.has_connection ? button('Ngắt kết nối', 'disconnect-meta', 'danger') : ''}${detail ? '<a class="btn text" href="#connections">Quay lại danh sách</a>' : `<a class="btn text" href="#connections/facebook">Chi tiết kết nối ${icon('arrow', 15)}</a>`}</div></article>`;
 }
 
-export function platformDetailView(platform) {
+export function platformConnectionsView(d = {}, meta = {}) {
+    return connectionsView(d, meta);
+}
+
+export function platformDetailView(platform, meta = {}) {
+    if (platform === 'facebook') return heading('TÍCH HỢP DỮ LIỆU', 'Facebook', 'Kết nối tài khoản Meta của KinderHealth.') + metaConnectionCard(meta, true);
     const providers = {
-        facebook: { name: 'Facebook', label: 'Meta Marketing API · Page Insights', description: 'Quản lý kết nối Facebook và các tài sản Meta của KinderHealth.', status: 'Meta API chưa được tích hợp ở backend. Hiện chưa thể xác thực hoặc đồng bộ dữ liệu Facebook.', setup: 'Cần đăng ký ứng dụng Meta, thiết lập OAuth và cấp quyền phù hợp cho tài khoản quảng cáo hoặc Trang Facebook.', url: 'https://developers.facebook.com/docs/marketing-apis/' },
         tiktok: { name: 'TikTok', label: 'TikTok Business API', description: 'Quản lý kết nối tài khoản TikTok Business và dữ liệu quảng cáo.', status: 'TikTok API chưa được tích hợp ở backend. Hiện chưa thể xác thực hoặc đồng bộ dữ liệu TikTok.', setup: 'Cần đăng ký ứng dụng TikTok for Business, thiết lập OAuth và cấp quyền cho tài khoản quảng cáo.', url: 'https://business-api.tiktok.com/portal/docs' }
     };
     const provider = providers[platform];

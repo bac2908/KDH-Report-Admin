@@ -51,19 +51,27 @@ class PlatformData:
         account_email: str | None = None,
         status: str = "connected",
         secret_name: str | None = None,
+        db=None,
     ) -> str:
-        existing = self.store.one(
+        if db is None:
+            with self.store.connect(immediate=True) as db:
+                return self.upsert_connection(
+                    client_id=client_id, provider=provider,
+                    external_account_id=external_account_id, account_name=account_name,
+                    account_email=account_email, status=status, secret_name=secret_name, db=db,
+                )
+        existing = db.execute(
             """
             SELECT id FROM connections
             WHERE client_id=? AND provider=? AND COALESCE(external_account_id,'')=?
             ORDER BY created_at LIMIT 1
             """,
             (client_id, provider, external_account_id or ""),
-        )
+        ).fetchone()
         connection_id = existing["id"] if existing else uid()
         timestamp = now()
         if existing:
-            self.store.execute(
+            db.execute(
                 """
                 UPDATE connections
                 SET account_name=?, account_email=?, status=?, secret_name=?,
@@ -83,7 +91,7 @@ class PlatformData:
                 ),
             )
         else:
-            self.store.execute(
+            db.execute(
                 """
                 INSERT INTO connections (
                     id,client_id,provider,external_account_id,account_name,

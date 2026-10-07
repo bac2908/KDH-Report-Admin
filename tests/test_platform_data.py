@@ -24,7 +24,7 @@ class PlatformDataTests(unittest.TestCase):
             self.assertEqual(after,before)
             self.assertEqual(upgraded.setting('migration_sentinel'),'keep-me')
             Store(folder)
-            self.assertEqual(upgraded.one('SELECT COUNT(*) AS n FROM schema_migrations')['n'],2)
+            self.assertEqual(upgraded.one('SELECT COUNT(*) AS n FROM schema_migrations')['n'],len(MIGRATIONS))
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

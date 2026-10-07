@@ -75,6 +75,10 @@ async function navigate() {
             }
         }
         if (page === 'report-builder') {
+            if (state.reportBuilder?.previewLoading) {
+                state.reportBuilder.previewLoading = false;
+                state.reportBuilder.previewError = 'Đã hủy tải bản xem trước khi chuyển màn hình. Quay lại cấu hình để mở lại.';
+            }
             const requestedDatasetId = new URLSearchParams(parts[1]).get('dataset');
             const discovered = await discoverReferencedDatasets(read, version);
             let datasets = discovered.datasets;
@@ -88,6 +92,11 @@ async function navigate() {
                     else throw err;
                 }
             }
+            const realDatasets = datasets.filter(isRealReportDataset);
+            if (requestedDatasetId && datasets.some(item => item.id === requestedDatasetId) && !realDatasets.some(item => item.id === requestedDatasetId)) {
+                preselectionError = 'Dataset DEMO không được dùng trong Report Builder dữ liệu thật.';
+            }
+            datasets = realDatasets;
             if (!state.reportBuilder) {
                 const defaultPeriod = period('last28');
                 state.reportBuilder = {
@@ -112,7 +121,22 @@ async function navigate() {
         }
         if (page === 'assets') { state.connection = await read('/google'); html = assetsView(state.connection); }
         if (page === 'sync') { const sources = await Promise.all([read('/jobs'), state.user.role === 'admin' ? read('/google') : Promise.resolve(null)]); state.jobs = sources[0]; state.connection = sources[1]; html = syncView(state.jobs, state.overview, state.user, state.connection); }
-        if (page === 'connections') { state.connection = await read('/google'); html = state.connectionPlatform === 'google' ? connectionsView(state.connection) : state.connectionPlatform ? platformDetailView(state.connectionPlatform) : platformConnectionsView(state.connection); if (oauthResult) { html = notice(oauthResult === 'success' ? 'Đã kết nối Google. Các nguồn đang được kiểm tra.' : oauthResult === 'denied' ? 'Bạn đã hủy cấp quyền Google.' : 'Kết nối chưa hoàn tất. Hãy thử kết nối lại.', oauthResult === 'success' ? 'green' : 'amber') + html; history.replaceState(null, '', '#connections/google'); } }
+        if (page === 'connections') {
+            const platform = state.connectionPlatform;
+            if (platform === 'facebook') html = platformDetailView(platform, await read('/meta'));
+            else if (platform === 'tiktok') html = platformDetailView(platform);
+            else {
+                const [google, meta] = await Promise.all([read('/google'), read('/meta')]);
+                state.connection = google;
+                html = platform === 'google' ? connectionsView(google, meta) : platformConnectionsView(google, meta);
+            }
+            if (oauthResult && ['google', 'facebook'].includes(platform)) {
+                const name = platform === 'facebook' ? 'Meta' : 'Google';
+                const success = platform === 'facebook' ? 'Đã kết nối Meta. Chưa đồng bộ dữ liệu.' : 'Đã kết nối Google. Các nguồn đang được kiểm tra.';
+                html = notice(oauthResult === 'success' ? success : oauthResult === 'denied' ? `Bạn đã hủy cấp quyền ${name}.` : 'Kết nối chưa hoàn tất. Hãy thử kết nối lại.', oauthResult === 'success' ? 'green' : 'amber') + html;
+                history.replaceState(null, '', '#connections/' + platform);
+            }
+        }
         if (page === 'analysis') { const requested = new URLSearchParams(parts[1]).get('dataset') || (!state.dataset && state.draft.demo && !state.draft.upload_id ? state.overview.demo_datasets?.[state.draft.report_type] : null); if (requested && state.dataset?.id !== requested) { state.dataset = await read('/datasets/' + encodeURIComponent(requested)); state.draft = { ...state.dataset.params }; state.tab = 'summary'; state.tablePage = 0; } if (state.overview.types.some(t => t.id === 'gmb')) state.uploads = await read('/uploads'); html = analysisView(state, state.overview.types, state.user); }
         if (page === 'reports') { state.reports = await read('/reports'); html = reportsView(state.reports, state.overview.types, state.user, state.reportFilter); }
         if (page === 'activity') { const results = await Promise.all([read('/jobs'), state.user.role === 'admin' ? read('/events') : Promise.resolve([])]); state.jobs = results[0]; state.events = results[1]; html = activityView(state.jobs, state.events, state.user, state.jobFilter); }
@@ -124,7 +148,7 @@ async function navigate() {
         $('#content').innerHTML = html + footer();
         if (page === 'analysis') { updateFilterState(); if (state.job) $('#job-progress').innerHTML = jobProgress(state.job); }
         const oauthJob = new URLSearchParams(parts[1]).get('job');
-        if (page === 'connections' && oauthResult === 'success' && oauthJob) {
+        if (page === 'connections' && state.connectionPlatform === 'google' && oauthResult === 'success' && oauthJob) {
             void waitJob(oauthJob).then(() => { if (version === state.generation) return navigate(); }).catch(handleError);
         }
     } catch (err) { if (version !== state.generation) return; if (err.status === 401) { await handleError(err); return; } $('#content').innerHTML = empty('Không thể hiển thị màn hình', err.message, button('Thử lại', 'refresh-page', 'primary')) + footer(); }
@@ -148,6 +172,15 @@ function readReportBuilderForm() {
 function renderReportBuilder() {
     if (state.page === 'report-builder' && state.reportBuilder) $('#content').innerHTML = reportBuilderView(state.reportBuilder, state.overview.types) + footer();
 }
+function isRealReportDataset(dataset) {
+    return !dataset.params?.demo && !Object.values(dataset.sources || {}).some(source => source?.demo);
+}
+function sameSnapshotValue(left, right) {
+    if (left === right) return true;
+    if (!left || !right || typeof left !== 'object' || typeof right !== 'object' || Array.isArray(left) !== Array.isArray(right)) return false;
+    const keys = Object.keys(left);
+    return keys.length === Object.keys(right).length && keys.every(key => Object.hasOwn(right, key) && sameSnapshotValue(left[key], right[key]));
+}
 function reportBuilderConfigurationFromBundle(builder, bundle) {
     const sections = bundle.sections || {};
     const keys = Array.isArray(bundle.navigation?.sections)
@@ -169,6 +202,7 @@ function reportBuilderPreviewValidation(bundle, datasets, datasetErrors) {
     if (new Set(keys).size !== keys.length) errors.push('Danh sách section lưu trong Report Bundle có mục trùng lặp.');
     if (!keys.includes(bundle.navigation?.default_section)) errors.push('Trang mặc định không hợp lệ: không nằm trong danh sách section được lưu.');
     if (bundle.report?.status !== 'draft') errors.push('Chỉ có thể xem trước Report Bundle ở trạng thái DRAFT.');
+    if (bundle.client?.id !== 'client_kinderhealth') errors.push('Report Bundle không thuộc khách hàng KinderHealth.');
     for (const key of keys) {
         const section = sectionData[key];
         const definition = definitions.get(key);
@@ -190,9 +224,27 @@ function reportBuilderPreviewValidation(bundle, datasets, datasetErrors) {
             continue;
         }
         const dataset = datasets[datasetId];
+        const params = dataset.params || {};
+        if (dataset.id !== datasetId) errors.push(`${definition.label}: Dataset ID không khớp snapshot đã lưu.`);
+        if (!isRealReportDataset(dataset)) {
+            errors.push(`${definition.label}: Dataset DEMO không được dùng để xem trước báo cáo dữ liệu thật.`);
+        }
+        if ([dataset.client_id, params.client_id].some(owner => owner && owner !== bundle.client?.id)) {
+            errors.push(`${definition.label}: Dataset không thuộc khách hàng của báo cáo.`);
+        }
+        if (params.start !== bundle.period?.start || params.end !== bundle.period?.end) {
+            errors.push(`${definition.label}: kỳ Dataset không khớp kỳ báo cáo.`);
+        }
         const reportType = dataset.report_type || dataset.params?.report_type;
-        if (definition.reportTypes && !definition.reportTypes.includes(reportType)) {
+        if ((definition.reportTypes && !definition.reportTypes.includes(reportType)) || (section.report_type && reportType !== section.report_type)) {
             errors.push(`${definition.label}: Dataset không tương thích với section trình bày.`);
+        }
+        if (section.data && typeof section.data === 'object') {
+            const { exportable, ...loadedSnapshot } = dataset;
+            const { exportable: capturedExportable, ...capturedSnapshot } = section.data;
+            if (!sameSnapshotValue(loadedSnapshot, capturedSnapshot)) {
+                errors.push(`${definition.label}: Dataset không khớp snapshot đã lưu trong bản nháp. Không hiển thị nội dung đã thay đổi.`);
+            }
         }
     }
     return errors;
@@ -202,16 +254,24 @@ async function loadReportBuilderPreview() {
     if (!builder?.reportId || !builder.revision) throw new Error('Không tìm thấy Report Bundle để xem trước.');
     if (builder.bundleStatus !== 'draft' || !builder.configurationSaved) throw new Error('Hãy lưu cấu hình của bản nháp trước khi mở xem trước.');
     const authEpoch = state.authEpoch;
+    const generation = state.generation;
+    const request = builder.previewRequest = Symbol();
+    const isCurrent = () => authEpoch === state.authEpoch && generation === state.generation &&
+        state.page === 'report-builder' && state.reportBuilder === builder && builder.step === 4 && builder.previewRequest === request;
     builder.previewLoading = true;
     builder.previewError = '';
     builder.preview = null;
+    builder.previewValidationErrors = [];
     builder.step = 4;
     renderReportBuilder();
     try {
-        const bundle = await api('/report-bundles/' + encodeURIComponent(builder.reportId));
-        if (authEpoch !== state.authEpoch || state.page !== 'report-builder' || state.reportBuilder !== builder) return;
-        builder.revision = bundle.report?.revision ?? builder.revision;
+        const bundle = await api('/report-bundles/' + encodeURIComponent(builder.reportId) + '?revision=' + builder.revision);
+        if (!isCurrent()) return;
+        if (bundle.report?.id !== builder.reportId || bundle.report?.revision !== builder.revision) {
+            throw new Error('Report Bundle trả về không khớp bản nháp đã lưu.');
+        }
         builder.bundleStatus = bundle.report?.status || 'unknown';
+        if (builder.bundleStatus !== 'draft') throw new Error('Chỉ có thể xem trước Report Bundle ở trạng thái DRAFT.');
         builder.form.name = String(bundle.report?.name || builder.form.name || '');
         builder.form.start_date = String(bundle.period?.start || '');
         builder.form.end_date = String(bundle.period?.end || '');
@@ -221,28 +281,27 @@ async function loadReportBuilderPreview() {
         const sectionData = bundle.sections && typeof bundle.sections === 'object' ? bundle.sections : {};
         const sectionKeys = Array.isArray(bundle.navigation?.sections) ? bundle.navigation.sections : [];
         const datasetIds = [...new Set(sectionKeys.map(key => sectionData[key]?.dataset_id).filter(id => typeof id === 'string' && id))];
-        const datasetResults = await Promise.all(datasetIds.map(async id => {
+        const results = await Promise.all(datasetIds.map(async id => {
             try {
                 const dataset = await api('/datasets/' + encodeURIComponent(id));
-                return [id, dataset, null];
+                return { id, dataset };
             } catch (err) {
-                if (err.status === 401 || err.status === 403) throw err;
-                return [id, null, err.status === 404 ? `Không tìm thấy Dataset (${id}).` : err.message || `Không thể tải Dataset (${id}).`];
+                if (err.status === 401 || err.cancelled) throw err;
+                return { id, error: err.status === 404 ? `Không tìm thấy Dataset (${id}).` : err.message || `Không thể tải Dataset (${id}).` };
             }
         }));
-        if (authEpoch !== state.authEpoch || state.page !== 'report-builder' || state.reportBuilder !== builder) return;
-        const datasets = Object.fromEntries(datasetResults.filter(([, dataset]) => dataset).map(([id, dataset]) => [id, dataset]));
-        const datasetErrors = Object.fromEntries(datasetResults.filter(([, , error]) => error).map(([id, , error]) => [id, error]));
-        builder.datasets = [...builder.datasets.filter(dataset => !datasets[dataset.id]), ...Object.values(datasets)];
+        if (!isCurrent()) return;
+        const datasets = Object.fromEntries(results.filter(result => result.dataset).map(result => [result.id, result.dataset]));
+        const datasetErrors = Object.fromEntries(results.filter(result => result.error).map(result => [result.id, result.error]));
         builder.preview = { bundle, datasets, datasetErrors };
         builder.previewValidationErrors = reportBuilderPreviewValidation(bundle, datasets, datasetErrors);
         builder.previewLoading = false;
         renderReportBuilder();
     } catch (err) {
-        if (authEpoch !== state.authEpoch || state.page !== 'report-builder' || state.reportBuilder !== builder) return;
+        if (!isCurrent()) return;
         builder.previewLoading = false;
         if (err.status === 404) builder.previewError = 'Không tìm thấy báo cáo.';
-        else if (err.status === 401 || err.status === 403) throw err;
+        else if (err.status === 401) throw err;
         else builder.previewError = err.message || 'Không thể tải bản xem trước.';
         renderReportBuilder();
     }
@@ -343,7 +402,9 @@ async function act(action, el) {
         case 'forgot': modal('Khôi phục mật khẩu', `<p>Liên hệ quản trị viên để đặt lại mật khẩu tài khoản ứng dụng.</p><p class="muted">Nếu bạn là quản trị viên duy nhất, chạy trên máy chủ:</p><p class="code">.venv\Scripts\python.exe run.py reset-password --email EMAIL_CUA_BAN</p>`, button('Đóng', 'close-modal')); break;
         case 'logout': await api('/auth/logout', 'POST', {}); clearSessionData(); state.user = null; setCsrf(''); location.hash = ''; return start();
         case 'connect-google': { const r = await api('/google/connect', 'POST', {}); location.assign(r.url); break; }
-        case 'connect-facebook': toast('Kết nối Facebook sẽ khả dụng khi backend Meta được cấu hình.', true); break;
+        case 'connect-facebook': { const r = await api('/meta/connect', 'POST', {}); location.assign(r.url); break; }
+        case 'disconnect-meta': modal('Ngắt kết nối Meta', notice('Thu hồi quyền ứng dụng Meta và xóa kết nối đã lưu tại Admin.', 'amber'), button('Giữ kết nối', 'close-modal') + button('Ngắt kết nối', 'disconnect-meta-confirm', 'danger')); break;
+        case 'disconnect-meta-confirm': { const r = await api('/meta', 'DELETE'); $('#modal').close(); toast(r.message, !r.revoked_at_provider); await navigate(); break; }
         case 'connect-tiktok': toast('Kết nối TikTok sẽ khả dụng khi backend TikTok được cấu hình.', true); break;
         case 'check-google': { const r = await api('/google/check', 'POST', {}); toast(r.created ? 'Đã bắt đầu kiểm tra từng nguồn.' : 'Tác vụ kiểm tra này đang chạy.'); if (state.page === 'connections') await navigate(); const j = await waitJob(r.job_id); toast(j.status === 'succeeded' ? 'Các nguồn đã được kiểm tra.' : 'Đã kiểm tra. Một số nguồn cần xử lý.', j.status !== 'succeeded'); if (['overview', 'connections', 'activity', 'sync'].includes(state.page)) await navigate(); break; }
         case 'disconnect-google': modal('Ngắt kết nối Google', notice('Các báo cáo đã lưu được giữ. Lần phân tích tiếp theo sẽ cần Admin kết nối lại.', 'amber'), button('Giữ kết nối', 'close-modal') + button('Ngắt kết nối', 'disconnect-confirm', 'danger')); break;
