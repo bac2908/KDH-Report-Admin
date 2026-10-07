@@ -1,16 +1,18 @@
-"""Serverless behavior; uses an isolated SQLite database unless testing Postgres."""
+"""Runtime and optional request-processing behavior using isolated storage."""
 import io
+import os
 import tempfile
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from unittest.mock import patch
 
 from cryptography.fernet import Fernet
 from openpyxl import load_workbook
 
 from kdh.app import create_app
-from kdh.core import now
+from kdh.core import load_config, now
 from kdh.google import REQUEST_DEADLINE, SourceError, call
 from test_app import fixture
 
@@ -20,7 +22,7 @@ class RequestModeTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.config = {
-            'DATA_DIR': self.temp.name, 'DATABASE_URL': '', 'VERCEL': False,
+            'DATA_DIR': self.temp.name, 'DATABASE_URL': '',
             'JOB_MODE': 'request', 'TESTING': True, 'APP_URL': 'https://kdh.example.test',
             'COOKIE_SECURE': True, 'ENCRYPTION_KEY': Fernet.generate_key().decode(),
             'INITIAL_ADMIN_EMAIL': 'cloud@example.test', 'INITIAL_ADMIN_PASSWORD': 'Cloud-test-password-123',
@@ -100,11 +102,19 @@ class RequestModeTest(unittest.TestCase):
         self.store.execute("UPDATE users SET role='viewer' WHERE id=?", (self.actor,))
         self.assertEqual(self.post('/api/demo/seed').status_code, 403)
 
-    def test_vercel_refuses_ephemeral_database_and_insecure_configuration(self):
-        with self.assertRaisesRegex(RuntimeError, 'DATABASE_URL'):
-            create_app({**self.config, 'VERCEL': True})
-        with self.assertRaisesRegex(RuntimeError, 'HTTPS APP_URL'):
-            create_app({**self.config, 'VERCEL': True, 'DATABASE_URL': 'postgresql://unused', 'APP_URL': 'http://localhost'})
+    def test_local_worker_persists_login_and_encrypted_connection_after_restart(self):
+        config = {**self.config, 'JOB_MODE': 'worker', 'ENCRYPTION_KEY': '',
+                  'APP_URL': 'http://localhost', 'COOKIE_SECURE': False}
+        first = create_app(config)
+        first.extensions['google'].save({'access_token': 'runtime-test-token'})
+        key = (self.store.folder / 'encryption.key').read_bytes()
+        restarted = create_app(config)
+        self.assertEqual(restarted.extensions['google'].read()['access_token'], 'runtime-test-token')
+        self.assertEqual((self.store.folder / 'encryption.key').read_bytes(), key)
+        login = restarted.test_client().post('/api/auth/login', json={
+            'email': config['INITIAL_ADMIN_EMAIL'], 'password': config['INITIAL_ADMIN_PASSWORD'],
+        }, headers={'X-KDH-Request': '1'})
+        self.assertEqual(login.status_code, 200, login.json)
 
     def test_expired_google_budget_never_calls_provider(self):
         token = REQUEST_DEADLINE.set(time.monotonic() + 30)
@@ -116,9 +126,22 @@ class RequestModeTest(unittest.TestCase):
         finally:
             REQUEST_DEADLINE.reset(token)
 
-    def test_vercel_response_limit_returns_readable_error(self):
-        self.app.config['VERCEL'] = True
+    def test_default_runtime_uses_worker_and_persistent_storage(self):
+        with patch.dict(os.environ, {}, clear=True), patch('kdh.core.ROOT', Path(self.temp.name)):
+            config = load_config()
+        self.assertEqual(config['JOB_MODE'], 'worker')
+        self.assertEqual(config['DATA_DIR'], str(Path(self.temp.name) / 'instance'))
+        self.assertEqual(config['DATABASE_URL'], '')
+        self.assertFalse(config['COOKIE_SECURE'])
+        self.assertEqual(config['MAX_CONTENT_LENGTH'], 5 * 1024 * 1024)
+        with self.assertRaisesRegex(RuntimeError, 'JOB_MODE'):
+            create_app({**self.config, 'JOB_MODE': 'invalid'})
+
+    def test_large_response_preserved_with_security_headers(self):
+        content = b'x' * (4 * 1024 * 1024 + 1)
         with self.app.test_request_context('/'):
-            response = self.app.process_response(self.app.response_class('x' * (4 * 1024 * 1024 + 1)))
-        self.assertEqual(response.status_code, 413)
-        self.assertIn('4 MB', response.json['error'])
+            response = self.app.process_response(self.app.response_class(content))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, content)
+        self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
+        self.assertEqual(response.headers['Cache-Control'], 'no-store')

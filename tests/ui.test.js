@@ -231,7 +231,20 @@ test('Filter edits preserve the applied result, disable export, and export uses 
   } finally { h.close(); }
 });
 
-test('Vercel processes queued analysis and export through authenticated POST requests', async () => {
+test('Schedules describe worker operation without a fixed daily cloud window', async () => {
+  for (const requestMode of [false, true]) {
+    const h = await harness({ requestMode }); try {
+      h.w.location.hash = 'schedules';
+      await h.until(() => h.document.querySelector('[data-action=new-schedule]'));
+      const text = h.document.body.textContent;
+      assert.doesNotMatch(text, /07:00–08:00/);
+      assert.match(text, requestMode ? /tần suất gọi/ : /Nếu máy chủ tắt/);
+      assert.deepEqual(h.errors, []);
+    } finally { h.close(); }
+  }
+});
+
+test('Request mode processes queued analysis and export through authenticated POST requests', async () => {
   const h = await harness({ requestMode: true }); try {
     h.w.location.hash = 'analysis'; await h.until(() => h.document.querySelector('#analysis-form'));
     h.document.querySelector('#filter-start').value = '2026-09-01';

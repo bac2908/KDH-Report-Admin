@@ -37,7 +37,7 @@ class PostgresTest(unittest.TestCase):
         for folder in self.folders:
             self.addCleanup(folder.cleanup)
         config = {'DATABASE_URL': database, 'ENCRYPTION_KEY': Fernet.generate_key().decode(),
-                  'APP_URL': 'https://cloud.example.test', 'VERCEL': True, 'JOB_MODE': 'request',
+                  'APP_URL': 'https://cloud.example.test', 'JOB_MODE': 'request',
                   'COOKIE_SECURE': True, 'TESTING': True, 'GOOGLE_CLIENT_ID': '', 'GOOGLE_CLIENT_SECRET': '',
                   'GOOGLE_REDIRECT_URI': 'https://cloud.example.test/api/google/callback',
                   'INITIAL_ADMIN_EMAIL': 'cloud@example.test', 'INITIAL_ADMIN_PASSWORD': 'Cloud-test-password-123'}
@@ -74,6 +74,14 @@ class PostgresTest(unittest.TestCase):
         self.assertEqual(self.clients[1].get('/api/reports/' + report['id'] + '/html').status_code, 200)
         self.assertEqual(len(self.clients[1].get('/api/uploads').json), 2)
         self.assertTrue(all(not (self.store.folder / f).exists() for f in ('encryption.key', 'kdh.sqlite3', 'exports')))
+
+    def test_artifact_over_four_mb_persists_across_instances(self):
+        job_id, _ = enqueue(self.store, self.actor, 'analysis', filters({
+            'report_type': 'ga4', 'start': '2026-01-01', 'end': '2026-01-28', 'compare': False,
+        }))
+        content = b'PK' + b'x' * (4 * 1024 * 1024)
+        self.store.save_artifact(job_id, content)
+        self.assertEqual(self.apps[1].extensions['store'].artifact(job_id), content)
 
     def test_atomic_enqueue_and_processing_claim(self):
         params = filters({'report_type': 'seo', 'start': '2026-01-01', 'end': '2026-01-28', 'compare': False})

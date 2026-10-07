@@ -4,7 +4,7 @@
 
 ## Chạy bằng Docker
 
-Làm theo [hướng dẫn Docker](DEPLOY_DOCKER.md): cấu hình `.env`, build container và mở **http://127.0.0.1:8090**. Tài khoản, kết nối Google, dữ liệu và khóa mã hóa nằm trong volume `admin-data`. Lịch tự động do worker xử lý khi container đang chạy. Admin có thể thêm dữ liệu mẫu trong **Cài đặt**.
+Làm theo [hướng dẫn Docker](DEPLOY_DOCKER.md): cấu hình `.env`, build container và mở **http://localhost:8090**. Tài khoản, kết nối Google, dữ liệu và khóa mã hóa nằm trong volume `admin-data`. Lịch tự động do worker xử lý khi container đang chạy. Admin có thể thêm dữ liệu mẫu trong **Cài đặt**.
 
 ## Report Bundle cho KDH-Report-New
 
@@ -14,7 +14,7 @@ Xem [endpoint, JSON contract, ví dụ request/response và migration 2](docs/re
 
 ## Demo bằng Docker trên máy này
 
-Image: `kdh-report-admin:demo`. Container: `kdh-report-admin-admin-1`. Truy cập **http://127.0.0.1:8090** bằng tài khoản và mật khẩu admin đã tạo trước đó.
+Image: `kdh-report-admin:demo`. Container: `kdh-report-admin-admin-1`. Truy cập **http://localhost:8090** bằng tài khoản và mật khẩu admin đã tạo trước đó.
 
 Mở Docker Desktop, sau đó nhấp đúp **`demo.cmd`**. Script chờ container khỏe rồi mở trang ứng dụng. Hoặc chạy:
 
@@ -65,7 +65,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe run.py
 ```
 
-Mở **http://127.0.0.1:8090**. Lần đầu, trên chính máy chủ, giao diện cho phép tạo **một tài khoản admin đầu tiên**, sau đó đăng nhập. Không có tài khoản mặc định, mật khẩu cứng hoặc đăng ký công khai. Các lần sau chỉ cần chạy `run.py`. Có thể dùng `powershell -File .\start.ps1` nếu chính sách PowerShell của máy cho phép chạy script.
+Mở **http://localhost:8090**. Lần đầu, trên chính máy chủ, giao diện cho phép tạo **một tài khoản admin đầu tiên**, sau đó đăng nhập. Không có tài khoản mặc định, mật khẩu cứng hoặc đăng ký công khai. Các lần sau chỉ cần chạy `run.py`. Có thể dùng `powershell -File .\start.ps1` nếu chính sách PowerShell của máy cho phép chạy script.
 
 Sau khi thiết lập, có thể tạo Admin / Người vận hành / Người xem ở màn hình Người dùng. Tài khoản đăng nhập admin và tài khoản Google cấp quyền nguồn là hai loại riêng.
 
@@ -81,7 +81,7 @@ Sau khi thiết lập, có thể tạo Admin / Người vận hành / Người x
 
 1. Trong Google Cloud project của đơn vị, bật **Google Analytics Data API**, **Google Search Console API**, **Google Sheets API**.
 2. Thiết lập màn hình OAuth consent và tài khoản thử nghiệm nếu ứng dụng đang ở chế độ Testing.
-3. Tạo OAuth client loại **Web application**, thêm đúng redirect URI `http://127.0.0.1:8090/api/google/callback`.
+3. Tạo OAuth client loại **Web application**, thêm đúng redirect URI `http://localhost:8090/api/google/callback`.
 4. Chép `.env.example` thành `.env`, đặt `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET`. Không gửi secret qua chat, không đưa vào frontend hoặc Git.
 5. Khởi động lại ứng dụng, đăng nhập admin, mở **Kết nối Google → Kết nối Google**, cấp các quyền chỉ đọc.
 

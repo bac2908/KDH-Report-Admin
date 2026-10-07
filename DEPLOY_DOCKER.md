@@ -1,6 +1,6 @@
 # Chạy KDH Report Admin bằng Docker
 
-Compose chạy Flask/Waitress và worker nền trong service `admin`. SQLite, báo cáo, dữ liệu và khóa mã hóa nằm trong volume `kdh-report-admin_admin-data`, gắn tại `/app/instance`. Frontend và API dùng chung **http://127.0.0.1:8090**.
+Compose chạy Flask/Waitress và worker nền trong service `admin`. SQLite, báo cáo, dữ liệu và khóa mã hóa nằm trong volume `kdh-report-admin_admin-data`, gắn tại `/app/instance`. Frontend và API dùng chung **http://localhost:8090**.
 
 ## Chuẩn bị và khởi động
 
@@ -14,7 +14,7 @@ docker compose up -d --build --wait
 docker compose ps
 ```
 
-Mở **http://127.0.0.1:8090**. Endpoint `/health` trả `{"status":"ok"}` khi database hoạt động.
+Mở **http://localhost:8090**. Endpoint `/health` trả `{"status":"ok"}` khi database hoạt động.
 
 Nếu là volume mới chưa có tài khoản, tạo Admin qua terminal; lệnh hỏi mật khẩu và không ghi mật khẩu vào lịch sử lệnh:
 
@@ -33,9 +33,9 @@ docker compose exec -T admin python run.py seed-demo
 Các giá trị cho bản chạy trên máy:
 
 ```dotenv
-APP_URL=http://127.0.0.1:8090
+APP_URL=http://localhost:8090
 COOKIE_SECURE=0
-GOOGLE_REDIRECT_URI=http://127.0.0.1:8090/api/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:8090/api/google/callback
 ```
 
 Điền `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` và các ID GA4/GSC/Sheets trong `.env`. Đăng ký đúng URI callback ở Google Cloud. Sau khi đổi `.env`, chạy `docker compose up -d --wait` để Compose tạo lại container với cấu hình mới.

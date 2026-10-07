@@ -17,7 +17,7 @@ def main():
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     folder = ROOT / 'test-results' / ('http-smoke-' + stamp + '-' + secrets.token_hex(3))
     app = create_app({'DATA_DIR': str(folder), 'APP_URL': 'http://127.0.0.1:8091',
-                      'DATABASE_URL':'', 'VERCEL':False, 'JOB_MODE':'worker', 'ENCRYPTION_KEY':'',
+                      'DATABASE_URL':'', 'JOB_MODE':'worker', 'ENCRYPTION_KEY':'',
                       'INITIAL_ADMIN_EMAIL':'', 'INITIAL_ADMIN_PASSWORD':'',
                       'GOOGLE_CLIENT_ID': '', 'GOOGLE_CLIENT_SECRET': '', 'COOKIE_SECURE': False,
                       'LEGACY_REPORT_DIR': str(folder / 'unused-legacy'), 'TESTING': True})
