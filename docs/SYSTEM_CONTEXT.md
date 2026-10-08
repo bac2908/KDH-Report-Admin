@@ -59,7 +59,9 @@ Ví dụ mục tiêu: người vận hành chọn Dataset SEO tháng 9, tạo Bu
 
 ## 4. Code Admin hiện có và phần đang dở
 
-Mốc đối chiếu: branch `feat/postgres-primary-store`, HEAD `ea84bb245d387daecede9302a97df4cf17108acf`, **có thay đổi chưa commit** về PostgreSQL và đồng bộ Google/source snapshots. Không được reset hoặc ghi đè chúng.
+Mốc rà soát ban đầu là branch `feat/postgres-primary-store` trên nền `ea84bb2`. Phần PostgreSQL, Google/source snapshots, kiểm thử và tài liệu đã được lưu trong commit **`8a2888b` — `update migration`**, sau đó gộp fast-forward vào **`main` ngày 08/10/2026** theo yêu cầu của chủ dự án. Tiếp tục làm việc trên `main`, không tự tạo feature branch mới; vẫn chỉ commit/push khi được yêu cầu.
+
+Luôn phân biệt **architecture target**, **local current state** và **GitHub committed state**. Khi kiểm tra GitHub, đối chiếu commit trên `origin/main`; tài liệu/Compose cũ trước `8a2888b` không phản ánh runtime PostgreSQL đang chạy. Việc gộp Admin vào main không thay đổi trạng thái local chưa commit của Report-New ở mục 5.
 
 | Phần | Trạng thái quan sát được |
 | --- | --- |
@@ -145,7 +147,7 @@ Compose Admin hiện dùng `postgres-data` cho PostgreSQL; giữ `admin-data` ch
 5. Nối New qua repository + mapper + section resolver; cấu hình kết nối giữa container; kiểm tra cùng report ID/revision từ Admin đến giao diện và file xuất. Không mặc định rằng mọi biểu đồ mẫu đã có nguồn dữ liệu thật.
 6. Hoàn thiện quyền người xem bên New và phần quản trị tài khoản bên Admin; sau đó mở rộng từng provider có kiểm thử. Các vấn đề quyền phải được xử lý trước khi mở truy cập báo cáo riêng tư cho bên ngoài.
 
-Các mục 3–6 vẫn chưa hoàn tất. Đợt 08/10 chỉ hoàn thiện source snapshots và xử lý regression của Admin, kiểm thử rồi triển khai Docker Admin. Không sửa code New, không commit hoặc push; các thay đổi người dùng đã stage được giữ nguyên.
+Các mục 3–6 vẫn chưa hoàn tất. Đợt triển khai 08/10 chỉ hoàn thiện source snapshots và xử lý regression của Admin, kiểm thử rồi triển khai Docker Admin; không sửa code New. Sau đó chủ dự án lưu commit `8a2888b` và yêu cầu gộp về `main`, đẩy Admin lên GitHub. Không coi thao tác đồng bộ Git này là đã hoàn thành tích hợp UI của New.
 
 ## 9. Điểm bắt đầu cho lần làm tiếp
 
