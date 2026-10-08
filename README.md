@@ -1,10 +1,12 @@
 # KDH Report Admin
 
-Ứng dụng quản trị báo cáo nội bộ KinderHealth, xây từ thiết kế Stitch trong `stitch_kdh_report_admin_frontend/`. Flask phục vụ cả API và frontend tiếng Việt. Docker chạy ứng dụng cùng worker nền, dùng SQLite trong volume bền vững. Backend vẫn hỗ trợ PostgreSQL cho deployment cấu hình riêng. Không cần chạy một Node backend hay MongoDB riêng.
+Ứng dụng quản trị báo cáo nội bộ KinderHealth, xây từ thiết kế Stitch trong `stitch_kdh_report_admin_frontend/`. Flask phục vụ cả API và frontend tiếng Việt. Compose hiện chạy ứng dụng cùng worker nền và PostgreSQL 16 trong volume bền vững. SQLite vẫn được hỗ trợ cho môi trường local không cấu hình `DATABASE_URL`. Không cần chạy một Node backend hay MongoDB riêng.
+
+Đọc [bối cảnh toàn hệ thống Admin ↔ Report-New](docs/SYSTEM_CONTEXT.md) trước khi tiếp tục phát triển: trách nhiệm hai dự án, hợp đồng dữ liệu, trạng thái đã kiểm tra và phần đang dở. Code working tree và container đang chạy có thể khác phiên bản.
 
 ## Chạy bằng Docker
 
-Làm theo [hướng dẫn Docker](DEPLOY_DOCKER.md): cấu hình `.env`, build container và mở **http://localhost:8090**. Tài khoản, kết nối Google, dữ liệu và khóa mã hóa nằm trong volume `admin-data`. Lịch tự động do worker xử lý khi container đang chạy. Admin có thể thêm dữ liệu mẫu trong **Cài đặt**.
+Làm theo [hướng dẫn Docker](DEPLOY_DOCKER.md): cấu hình `.env`, build container và mở **http://localhost:8090**. Tài khoản, kết nối Google và dữ liệu database nằm trong volume `postgres-data`; file ứng dụng vẫn nằm trong `admin-data`. Khóa mã hóa lấy từ `ENCRYPTION_KEY` cố định. Lịch tự động do worker xử lý khi container đang chạy. Admin có thể thêm dữ liệu mẫu riêng trong **Cài đặt**.
 
 ## Report Bundle cho KDH-Report-New
 
@@ -24,7 +26,7 @@ docker compose up -d --wait
 docker compose ps
 ```
 
-Compose lưu dữ liệu và khóa mã hóa trong volume `kdh-report-admin_admin-data`, gắn vào `/app/instance`. Thư mục `instance` trên Windows là môi trường local riêng; dữ liệu không tự đồng bộ giữa hai nơi.
+Compose lưu PostgreSQL trong volume `kdh-report-admin_postgres-data`. Volume `kdh-report-admin_admin-data` vẫn gắn vào `/app/instance` để giữ file và dữ liệu SQLite cũ phục vụ rollback. Đổi kết nối database không tự chuyển dữ liệu SQLite sang PostgreSQL. Thư mục `instance` trên Windows là môi trường local riêng; dữ liệu không tự đồng bộ giữa các nơi.
 
 Các lệnh vận hành:
 
@@ -94,7 +96,7 @@ Tài sản mặc định đã được đưa vào cấu hình:
 
 Tài khoản Google cần được chia sẻ quyền riêng trên cả ba tài sản. Trạng thái thiếu quyền / lỗi API / không có dữ liệu được ghi riêng. Kết nối có thể cần cấp lại khi hết hạn hoặc bị thu hồi.
 
-Backend giữ access token và refresh token mã hóa bằng Fernet trong database. Docker/local dùng khóa ở `instance/encryption.key`; deployment PostgreSQL dùng biến `ENCRYPTION_KEY` cố định. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
+Backend giữ access token và refresh token mã hóa bằng Fernet trong database. Compose PostgreSQL dùng biến `ENCRYPTION_KEY` cố định; local SQLite có thể dùng khóa ở `instance/encryption.key`. Cookie đăng nhập là mã phiên ngẫu nhiên HttpOnly; token Google không được gửi xuống trình duyệt, không lưu trong localStorage. Khi ngắt kết nối, backend cố gắng thu hồi ở Google rồi xóa kết nối cục bộ; giao diện báo rõ nếu Google chưa xác nhận.
 
 Tài liệu API đã đối chiếu: [Google OAuth Web Server](https://developers.google.com/identity/protocols/oauth2/web-server), [GA4 runReport](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/runReport), [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics/query), [Sheets values.get](https://developers.google.com/workspace/sheets/api/reference/rest/v4/spreadsheets.values/get).
 
@@ -159,9 +161,9 @@ Xuất bản hiện là **xuất bản nội bộ trong admin**, không public v
 ## Vận hành Docker/local
 
 - Một process Waitress và một worker nền. File lock ngăn chạy hai server cùng thư mục dữ liệu. Đây là cấu hình cho một đơn vị, không phải hàng đợi phân tán.
-- Tác vụ chờ được lưu SQLite. Tác vụ đang chạy khi server dừng sẽ chuyển `interrupted` ở lần mở lại, có thể thử lại.
+- Tác vụ chờ được lưu trong database đã cấu hình (PostgreSQL ở Compose hiện tại). Tác vụ đang chạy khi server dừng sẽ chuyển `interrupted` ở lần mở lại, có thể thử lại.
 - Lịch dùng timezone IANA Việt Nam. Khi mở lại sau thời gian tắt, xử lý một lần bị lỡ rồi tính lần tới; không chạy bù toàn bộ lịch sử.
-- Với Docker/local: SQLite ở `instance/kdh.sqlite3`, khóa mã hóa ở `instance/encryption.key`. Excel mới lưu trong database; Excel của bản cũ vẫn đọc từ `instance/exports/`. Dừng server trước khi sao lưu toàn bộ `instance` (hoặc dùng SQLite backup API cho backup khi đang chạy). Giữ khóa mã hóa cùng bản sao lưu trong kho nội bộ hạn chế quyền đọc.
+- Với Compose PostgreSQL: sao lưu database, `admin-data` và khóa `ENCRYPTION_KEY` theo [hướng dẫn Docker](DEPLOY_DOCKER.md). Với local SQLite: database ở `instance/kdh.sqlite3`; nếu dùng khóa file thì giữ cả `instance/encryption.key`. Excel mới lưu trong database; Excel của bản cũ vẫn đọc từ `instance/exports/`. Giữ khóa mã hóa tương ứng cùng bản sao lưu trong kho nội bộ hạn chế quyền đọc.
 - Không đưa `instance`, `.env`, credential vào Git, thư mục web hoặc bản chia sẻ frontend. Các thư mục này đã được loại trong `.gitignore` / `.dockerignore`.
 - Khi triển khai ngoài localhost, đặt HTTPS reverse proxy, `APP_URL` đúng origin, `COOKIE_SECURE=1`, redirect URI HTTPS đúng trong Google Cloud. Cấp quyền đọc/ghi thư mục dữ liệu cho tài khoản dịch vụ, không cho người dùng không liên quan.
 - Chỉ expose cổng admin sau lớp mạng nội bộ theo nhu cầu đơn vị. Các API dữ liệu đều yêu cầu đăng nhập.
@@ -188,7 +190,7 @@ npm.cmd test
 .\.venv\Scripts\python.exe tests/run_http_smoke.py
 ```
 
-Chạy toàn bộ test Python bằng `python -m unittest discover -s tests -v`, cùng 8 test giao diện bằng `npm test`. Python dùng `unittest`, Flask test client, SQLite tạm và schema PostgreSQL riêng cho từng bài; giao diện dùng Node test runner và JSDOM với HTTP API giả lập. Các test dùng cấu hình OAuth riêng, không phụ thuộc Client ID/Secret thật trong `.env`. Xem [hướng dẫn kiểm thử PostgreSQL](DEPLOY_DOCKER.md#kiểm-thử).
+Chạy toàn bộ test Python bằng `python -m unittest discover -s tests -v`, cùng các test giao diện bằng `npm test`. Python dùng `unittest`, Flask test client, SQLite tạm và schema PostgreSQL riêng cho từng bài; giao diện dùng Node test runner và JSDOM với HTTP API giả lập. Các test dùng cấu hình OAuth riêng, không phụ thuộc Client ID/Secret thật trong `.env`. Xem [hướng dẫn kiểm thử PostgreSQL](DEPLOY_DOCKER.md#kiểm-thử).
 
 Test Python kiểm tra auth/CSRF/phân quyền, queue, dữ liệu thiếu/độ trễ, Excel theo snapshot, công thức độc hại, CSV, phiên bản/xuất bản, OAuth state, lịch chạy và chế độ demo. Test DOM kiểm tra đăng nhập, bộ lọc chưa áp dụng, export, điều hướng, chuyển demo/thật và xóa dữ liệu phiên cũ khi hết hạn. Dữ liệu giả trong kiểm thử và bộ demo được chọn riêng; lỗi nguồn thật không tự dùng dữ liệu mẫu.
 

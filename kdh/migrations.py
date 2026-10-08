@@ -183,6 +183,30 @@ CREATE TABLE IF NOT EXISTS meta_oauth_states (
 );
 """,
     ),
+    (
+        4,
+        "source_snapshots",
+        """
+CREATE TABLE IF NOT EXISTS source_snapshots (
+    id TEXT PRIMARY KEY,
+    sync_run_id TEXT NOT NULL UNIQUE REFERENCES sync_runs(id),
+    client_id TEXT NOT NULL REFERENCES clients(id),
+    asset_id TEXT NOT NULL REFERENCES source_assets(id),
+    provider TEXT NOT NULL,
+    source_key TEXT NOT NULL,
+    requested_start TEXT,
+    requested_end TEXT,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_source_snapshots_client_source
+ON source_snapshots(client_id, source_key, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_source_snapshots_asset
+ON source_snapshots(asset_id, created_at);
+""",
+    ),
 ]
 
 

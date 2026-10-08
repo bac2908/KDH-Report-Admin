@@ -6,6 +6,8 @@ KDH-Report-Admin owns data, provider integrations, sync, Dataset snapshots, Repo
 
 Data flow: `Provider -> Sync -> immutable Dataset -> Report Bundle -> KDH-Report-New`.
 
+Read `docs/SYSTEM_CONTEXT.md` for cross-repository decisions, implementation status, and unfinished work. Revalidate its dated runtime observations against the working trees and containers before continuing.
+
 The current UI is single-client KinderHealth; retain `client_id` internally for architecture. Preserve the Vanilla JS / Flask architecture; do not introduce React or Vue.
 
 ## Data & Reporting

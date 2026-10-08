@@ -225,10 +225,68 @@ class AppTest(unittest.TestCase):
         self.assertEqual(job['status'],'failed')
         data=self.client.get('/api/datasets/'+job['dataset_id']).json
         self.assertTrue(all(s['status']=='disconnected' for s in data['sources'].values()))
+        self.assertEqual(len(job['steps']), 3)
+        self.assertFalse(data['exportable'])
+        for table in ('connections', 'daily_metrics', 'source_snapshots'):
+            self.assertEqual(self.store.one(f'SELECT COUNT(*) AS n FROM {table}')['n'], 0)
         self.google.save({'refresh_token':'DO_NOT_EXPOSE','access_token':'DO_NOT_EXPOSE','email':'google@example.test','connected_at':now(),'expires_at':'2099-01-01T00:00:00+00:00'})
         raw=self.client.get('/api/google').data
         self.assertNotIn(b'DO_NOT_EXPOSE',raw)
         self.assertNotIn(b'DO_NOT_EXPOSE',self.store.one('SELECT value FROM secrets')['value'])
+
+    def test_google_only_configured_source_can_sync_without_other_assets(self):
+        self.app.config.update(GA4_PROPERTY_ID='test-property', GSC_PROPERTY='',
+                               KEYWORD_SPREADSHEET_ID='', KEYWORD_SHEET='')
+        self.google.save({'access_token': 'test-only', 'expires_at': '2099-01-01T00:00:00+00:00'})
+        params={'report_type':'ga4','start':'2026-01-01','end':'2026-01-28','compare':False}
+        queued=self.post('/api/analyses', params).json['job_id']
+        with patch('requests.request', side_effect=AssertionError('No real network')):
+            with patch.object(self.google, 'ga4', side_effect=lambda p, h: fixture('ga4', p)):
+                self.worker.run_one()
+        job=self.client.get('/api/jobs/'+queued).json
+        self.assertEqual(job['status'], 'succeeded', job)
+        self.assertEqual(self.store.one('SELECT COUNT(*) AS n FROM source_assets')['n'], 1)
+        snapshot=self.store.one('SELECT * FROM source_snapshots')
+        self.assertEqual(snapshot['source_key'], 'ga4')
+        self.assertEqual(json.loads(snapshot['payload'])['status'], 'ready')
+
+    def test_missing_source_configuration_does_not_block_valid_google_source(self):
+        self.app.config.update(GA4_PROPERTY_ID='test-property', GSC_PROPERTY='',
+                               KEYWORD_SPREADSHEET_ID='', KEYWORD_SHEET='')
+        self.google.save({'access_token': 'test-only', 'expires_at': '2099-01-01T00:00:00+00:00'})
+        params={'report_type':'seo','start':'2026-01-01','end':'2026-01-28','compare':False}
+        queued=self.post('/api/analyses', params).json['job_id']
+        with patch('requests.request', side_effect=AssertionError('No real network')):
+            with patch.object(self.google, 'ga4', side_effect=lambda p, h: fixture('ga4', p)):
+                self.worker.run_one()
+        job=self.client.get('/api/jobs/'+queued).json
+        self.assertEqual(job['status'], 'partial', job)
+        data=self.client.get('/api/datasets/'+job['dataset_id']).json
+        self.assertEqual(data['sources']['ga4']['status'], 'ready')
+        for source in ('gsc', 'keywords'):
+            self.assertEqual(data['sources'][source]['status'], 'invalid_data')
+            self.assertNotIn('totals', data['sources'][source])
+        self.assertFalse(data['exportable'])
+        failed=self.store.all("SELECT * FROM sync_runs WHERE status='failed'")
+        self.assertEqual(len(failed), 2)
+        self.assertTrue(all(row['error_code']=='invalid_data' and row['record_count']==0 for row in failed))
+        self.assertEqual(self.store.one('SELECT COUNT(*) AS n FROM source_snapshots')['n'], 1)
+
+    def test_google_sync_uses_current_asset_after_configuration_change(self):
+        self.google.save({'access_token': 'test-only', 'expires_at': '2099-01-01T00:00:00+00:00'})
+        self.app.config['GA4_PROPERTY_ID']='old-property'
+        old=self.google.ensure_platform_records()['assets']['ga4']
+        self.app.config['GA4_PROPERTY_ID']='current-property'
+        current=self.google.ensure_platform_records()['assets']['ga4']
+        self.assertNotEqual(old, current)
+        params={'report_type':'ga4','start':'2026-01-01','end':'2026-01-28','compare':False}
+        queued=self.post('/api/analyses', params).json['job_id']
+        with patch('requests.request', side_effect=AssertionError('No real network')):
+            with patch.object(self.google, 'ga4', side_effect=lambda p, h: fixture('ga4', p)):
+                self.worker.run_one()
+        self.assertEqual(self.client.get('/api/jobs/'+queued).json['status'], 'succeeded')
+        self.assertEqual(self.store.one('SELECT asset_id FROM source_snapshots')['asset_id'], current)
+        self.assertEqual(self.store.one('SELECT asset_id FROM daily_metrics')['asset_id'], current)
 
     def test_oauth_state_bound_to_session_and_one_time(self):
         self.app.config.update(GOOGLE_CLIENT_ID='client',GOOGLE_CLIENT_SECRET='secret')

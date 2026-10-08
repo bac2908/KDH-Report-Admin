@@ -15,7 +15,7 @@ import requests
 from cryptography.fernet import Fernet
 
 from .core import Problem, now, pack, digest
-
+from .platform_data import DEFAULT_CLIENT_ID, PlatformData
 SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/analytics.readonly',
           'https://www.googleapis.com/auth/webmasters.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly']
 LABELS = {'ga4': 'Google Analytics 4', 'gsc': 'Search Console', 'keywords': 'Keyword Tracking', 'gmb': 'Google Business Profile'}
@@ -57,6 +57,7 @@ class Google:
     def __init__(self, store, config):
         self.store, self.config = store, config
         self.lock = threading.RLock()
+        self.platform = PlatformData(store)
         key = config.get('ENCRYPTION_KEY')
         if key:
             self.cipher = Fernet(key.encode())
@@ -89,6 +90,106 @@ class Google:
                 'checked_at': self.store.setting('google_checked_at'),
                 'sources': self.store.setting('google_sources', {})}
 
+    def ensure_platform_records(self):
+        token = self.read()
+
+        if not token:
+            return {"connection_id": None, "assets": {}}
+
+        # Hiện KDH chỉ hỗ trợ một Google connection
+        # cho mỗi client, nên dùng một key ổn định.
+        connection_id = self.platform.upsert_connection(
+            client_id=DEFAULT_CLIENT_ID,
+            provider="google",
+            external_account_id="primary",
+            account_name="Google - " + (
+                token.get("email") or "Unknown account"
+            ),
+            account_email=token.get("email"),
+            status="connected",
+            secret_name="google",
+        )
+
+        assets = {}
+
+        ga4_property = (
+            self.config.get("GA4_PROPERTY_ID", "")
+            .strip()
+        )
+
+        if ga4_property:
+            assets["ga4"] = self.platform.upsert_asset(
+                client_id=DEFAULT_CLIENT_ID,
+                provider="google",
+                asset_type="ga4_property",
+                external_id=ga4_property,
+                name=f"GA4 Property {ga4_property}",
+                connection_id=connection_id,
+                metadata={
+                    "source": "ga4",
+                },
+            )
+
+        gsc_property = (
+            self.config.get("GSC_PROPERTY", "")
+            .strip()
+        )
+
+        if gsc_property:
+            assets["gsc"] = self.platform.upsert_asset(
+                client_id=DEFAULT_CLIENT_ID,
+                provider="google",
+                asset_type="search_console_property",
+                external_id=gsc_property,
+                name=f"Search Console {gsc_property}",
+                connection_id=connection_id,
+                metadata={
+                    "source": "gsc",
+                },
+            )
+
+        spreadsheet_id = (
+            self.config.get(
+                "KEYWORD_SPREADSHEET_ID",
+                "",
+            ).strip()
+        )
+
+        sheet_name = (
+            self.config.get(
+                "KEYWORD_SHEET",
+                "",
+            ).strip()
+        )
+
+        if spreadsheet_id:
+            assets["keywords"] = (
+                self.platform.upsert_asset(
+                    client_id=DEFAULT_CLIENT_ID,
+                    provider="google",
+                    asset_type="keyword_sheet",
+                    external_id=spreadsheet_id,
+                    name=(
+                        "Keyword Tracking"
+                        + (
+                            f" - {sheet_name}"
+                            if sheet_name
+                            else ""
+                        )
+                    ),
+                    connection_id=connection_id,
+                    metadata={
+                        "source": "keywords",
+                        "sheet_name": sheet_name,
+                    },
+                )
+            )
+
+        return {
+            "connection_id": connection_id,
+            "assets": assets,
+        }
+
     def authorization_url(self, session_id):
         if not self.configured():
             raise Problem('Quản trị hệ thống cần cấu hình Google OAuth Web client ở backend trước khi kết nối.', 503)
@@ -119,8 +220,14 @@ class Google:
             raise Problem('Google chưa cấp quyền truy cập ngoại tuyến hoặc email chưa xác minh. Kết nối lại và cấp quyền.')
         token.update(email=profile['email'], connected_at=now(), expires_at=(datetime.now(timezone.utc) + timedelta(seconds=token.get('expires_in', 3600))).isoformat())
         with self.lock:
-            self.save(token)
-            self.store.set_setting('google_sources', {})
+           self.save(token)
+
+           self.ensure_platform_records()
+
+           self.store.set_setting(
+                "google_sources",
+                {},
+    )
 
     def access_token(self):
         with self.lock:
@@ -166,6 +273,15 @@ class Google:
             return revoked
 
     def fetch(self, source, params):
+        required = {
+            'ga4': ('GA4_PROPERTY_ID',),
+            'gsc': ('GSC_PROPERTY',),
+            'keywords': ('KEYWORD_SPREADSHEET_ID', 'KEYWORD_SHEET'),
+        }
+        if source not in required:
+            raise SourceError('invalid_data', 'Nguồn Google không được hỗ trợ.')
+        if any(not str(self.config.get(key) or '').strip() for key in required[source]):
+            raise SourceError('invalid_data', f'Chưa cấu hình tài sản cho {LABELS[source]}. Admin cần bổ sung cấu hình nguồn rồi thử lại.')
         token = self.access_token()
         headers = {'Authorization': 'Bearer ' + token}
         return getattr(self, source)(params, headers)

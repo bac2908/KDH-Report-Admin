@@ -7,12 +7,50 @@ existing `secrets` table; ordinary connection rows only keep a secret reference.
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Any
+from urllib.parse import parse_qsl, urlsplit
 
 from .core import now, pack, uid
 
 
 DEFAULT_CLIENT_ID = "client_kinderhealth"
+
+
+def _credential_key(key):
+    normalized = re.sub(r"[^a-z0-9]", "", str(key).lower())
+    return any(part in normalized for part in (
+        "token", "secret", "password", "credential", "authorization",
+        "cookie", "privatekey", "apikey",
+    ))
+
+
+def _validate_snapshot_payload(value, depth=0):
+    """Reject credentials rather than silently altering a normalized snapshot."""
+    message = "Source snapshot contains unsafe or invalid data."
+    if depth > 40:
+        raise ValueError(message)
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if not isinstance(key, str) or _credential_key(key):
+                raise ValueError(message)
+            _validate_snapshot_payload(child, depth + 1)
+    elif isinstance(value, list):
+        for child in value:
+            _validate_snapshot_payload(child, depth + 1)
+    elif isinstance(value, str):
+        if re.search(r"\b(?:Bearer|Basic)\s+\S+|\bAuthorization\s*:", value, re.I):
+            raise ValueError(message)
+        if value.lower().startswith(("http://", "https://")):
+            try:
+                url = urlsplit(value)
+                unsafe = url.username or url.password or any(
+                    _credential_key(key) for key, _ in parse_qsl(url.query) + parse_qsl(url.fragment)
+                )
+            except ValueError:
+                unsafe = True
+            if unsafe:
+                raise ValueError(message)
 
 
 def _stable_metric_id(
@@ -339,3 +377,46 @@ class PlatformData:
             ),
         )
         return metric_id
+
+    def save_source_snapshot(
+        self,
+        *,
+        sync_run_id: str,
+        client_id: str,
+        asset_id: str,
+        provider: str,
+        source_key: str,
+        requested_start: str | None,
+        requested_end: str | None,
+        payload: dict[str, Any],
+    ) -> str:
+        if not isinstance(payload, dict):
+            raise ValueError("Source snapshot must be a normalized object.")
+        _validate_snapshot_payload(payload)
+        snapshot_id = uid()
+        timestamp = now()
+
+        self.store.execute(
+            """
+            INSERT INTO source_snapshots (
+                id,sync_run_id,client_id,asset_id,provider,source_key,
+                requested_start,requested_end,payload,created_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(sync_run_id) DO UPDATE SET
+                client_id=excluded.client_id,
+                asset_id=excluded.asset_id,
+                provider=excluded.provider,
+                source_key=excluded.source_key,
+                requested_start=excluded.requested_start,
+                requested_end=excluded.requested_end,
+                payload=excluded.payload
+            """,
+            (snapshot_id, sync_run_id, client_id, asset_id, provider, source_key,
+             requested_start, requested_end, pack(payload), timestamp),
+        )
+
+        row = self.store.one(
+            "SELECT id FROM source_snapshots WHERE sync_run_id=?",
+            (sync_run_id,),
+        )
+        return row["id"]

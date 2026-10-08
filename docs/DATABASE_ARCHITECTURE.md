@@ -2,13 +2,17 @@
 
 ## Decision
 
-- **Current Docker deployment:** SQLite in `/app/instance/kdh.sqlite3`, persisted in the `admin-data` volume along with its encryption key.
-- **Local development:** SQLite in `instance/kdh.sqlite3`.
-- **Optional shared deployment:** PostgreSQL via `DATABASE_URL` and a stable `ENCRYPTION_KEY`. This requires explicit container environment configuration; the supplied Compose file uses SQLite.
+- **Current Compose configuration:** PostgreSQL 16 in service `postgres`, persisted in `postgres-data`; Admin receives `DATABASE_URL` and a stable `ENCRYPTION_KEY` through its environment.
+- **Local development without DATABASE_URL:** SQLite in `instance/kdh.sqlite3` remains supported.
+- **Legacy Docker files:** `admin-data` remains mounted at `/app/instance`, retaining application files and old SQLite data for rollback. It is not the current Compose primary database.
 - The configured Admin database is the source of truth for reporting data. Changing the database connection does not migrate existing data.
 - `KDH-Report-New` does not own a second reporting database in the current architecture; it will read published report bundles from the Admin internal API.
 
+See [SYSTEM_CONTEXT.md](SYSTEM_CONTEXT.md) for the dated cross-project review and unfinished work. Migration 4/source snapshots was deployed to Docker PostgreSQL on 2026-10-08 after SQLite/PostgreSQL regression tests passed; migrations 1–3 remain unchanged. Dataset-from-stored-sync and Report-New integration are still pending.
+
 ## Data flow
+
+Target flow (the Dataset-from-stored-sync reader and Report-New renderer integration are not yet wired end to end):
 
 ```text
 Google / Meta / TikTok / YouTube
@@ -20,7 +24,7 @@ Google / Meta / TikTok / YouTube
           sync_runs
               |
               v
-        daily_metrics
+ daily_metrics + source_snapshots
               |
               v
            datasets
@@ -84,6 +88,12 @@ This enables idempotent sync/upsert.
 
 ### datasets
 Existing immutable report snapshots remain unchanged for compatibility.
+
+The current analysis job still fetches provider results before saving a Dataset. Building a new Dataset entirely from persisted sync data is a pending integration step; Builder and Preview already consume saved snapshots only.
+
+### source_snapshots (migration 4)
+
+Stores normalized source payloads and their sync/client/asset lineage, including detail that daily metrics do not preserve. The current writer upserts one row per `sync_run_id`; these source records are distinct from immutable report Dataset snapshots. Provider credentials and OAuth tokens must never enter the payload.
 
 ### report_bundles
 A published/reportable view over one or more datasets. A bundle owns:

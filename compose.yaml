@@ -1,15 +1,52 @@
 name: kdh-report-admin
 
 services:
+  postgres:
+    image: postgres:16-alpine
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kdh_report}
+      POSTGRES_USER: ${POSTGRES_USER:-kdh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-kdh} -d ${POSTGRES_DB:-kdh_report}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
   admin:
     build: .
     image: kdh-report-admin:demo
     init: true
 
+    depends_on:
+      postgres:
+        condition: service_healthy
+
     ports:
       - "127.0.0.1:8090:8090"
 
     environment:
+      # ---------------------------------------------------------
+      # PRIMARY DATABASE
+      # ---------------------------------------------------------
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-kdh}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kdh_report}"
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+
       DATA_DIR: /app/instance
       JOB_MODE: worker
       REPORT_SERVICE_TOKEN: ${REPORT_SERVICE_TOKEN:-}
@@ -17,19 +54,25 @@ services:
       APP_URL: ${APP_URL:-http://localhost:8090}
       COOKIE_SECURE: ${COOKIE_SECURE:-0}
 
-      # Google OAuth
+      # ---------------------------------------------------------
+      # GOOGLE OAUTH
+      # ---------------------------------------------------------
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8090/api/google/callback}
 
-      # Meta / Facebook Login for Business
+      # ---------------------------------------------------------
+      # META / FACEBOOK
+      # ---------------------------------------------------------
       META_APP_ID: ${META_APP_ID:-}
       META_APP_SECRET: ${META_APP_SECRET:-}
       META_CONFIG_ID: ${META_CONFIG_ID:-}
       META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v26.0}
       META_REDIRECT_URI: ${META_REDIRECT_URI:-http://localhost:8090/api/meta/callback}
 
-      # Reporting sources
+      # ---------------------------------------------------------
+      # REPORTING SOURCES
+      # ---------------------------------------------------------
       GA4_PROPERTY_ID: ${GA4_PROPERTY_ID:-484358741}
       GSC_PROPERTY: ${GSC_PROPERTY:-https://kinderhealth.vn/}
       KEYWORD_SPREADSHEET_ID: ${KEYWORD_SPREADSHEET_ID:-1oVC_gc-_878btw6GJ9gQSDHJ7sqiGu2QB-lqMArqbSo}
@@ -40,6 +83,7 @@ services:
       DASHBOARD_URL: ${DASHBOARD_URL:-http://127.0.0.1:8088}
 
     volumes:
+      # Giữ volume cũ để rollback SQLite/local files nếu cần.
       - admin-data:/app/instance
 
       - type: bind
@@ -64,3 +108,4 @@ services:
 
 volumes:
   admin-data:
+  postgres-data:
