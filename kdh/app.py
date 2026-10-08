@@ -18,7 +18,8 @@ from .meta import Meta
 from .jobs import Worker, enqueue, job_view, next_run, period_dates
 from .reports import import_legacy, publish, save_report, save_upload, valid_dataset
 from .report_bundle_routes import register_report_bundle_routes
-
+from .metric_routes import register_metric_routes
+from .marketing_preview import register_marketing_preview_routes
 
 def _bootstrap_initial_admin(store, email, password):
     if store.one('SELECT id FROM users LIMIT 1'):
@@ -621,4 +622,6 @@ def create_app(overrides=None):
         return jsonify(message='Đã cập nhật lịch.')
 
     register_report_bundle_routes(app, store, require, body)
+    register_metric_routes(app, store, require)
+    register_marketing_preview_routes(app, store, require)
     return app

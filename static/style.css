@@ -23,10 +23,10 @@
     /* Dark Modern Sidebar Palette */
     --sidebar-bg: linear-gradient(180deg, #091124 0%, #0f172a 100%);
     --sidebar-border: rgba(255, 255, 255, 0.07);
-    --sidebar-text: #94a3b8;
+    --sidebar-text: #8496ae;
     --sidebar-text-active: #38bdf8;
     --sidebar-active-bg: linear-gradient(90deg, rgba(13, 148, 136, 0.16) 0%, rgba(13, 148, 136, 0.04) 100%);
-    --sidebar-accent: #2dd4bf;
+    --sidebar-accent: #29cfb9;
 
     /* Surface & Background */
     --bg-main: #f8fafc;
