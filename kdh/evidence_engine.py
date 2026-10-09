@@ -89,6 +89,13 @@ def _read(
         )
     )
 
+    # Prefer exact provider aggregates where implemented, including GSC CTR.
+    from .metric_snapshot import FIELDS
+    if metric['field'] in FIELDS.get(metric['source'], {}) and metric['kind'] == 'source':
+        scoped = read_metric_series(store, metric_id=metric_id, client_id=client_id,
+            allowed_sources=allowed_sources, start=period['start'], end=period['end'], asset_id=asset_id)
+        if scoped.get('snapshot_sync_run_id'):
+            is_calculated = False
     if is_calculated:
         item = calculate_metric(
             store,
@@ -285,6 +292,7 @@ def _comparison_view(
             "change_percentage_points"
         ],
         "lineage": previous["lineage"],
+        "daily_observations": previous['daily_observations'],
         "warnings": previous["warnings"],
     }
 

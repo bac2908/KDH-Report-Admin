@@ -38,6 +38,11 @@ class MiniStore:
                 metric_date TEXT NOT NULL, metrics TEXT NOT NULL,
                 sync_run_id TEXT, fetched_at TEXT NOT NULL
             );
+            CREATE TABLE source_snapshots (
+                sync_run_id TEXT PRIMARY KEY, payload TEXT, source_key TEXT,
+                client_id TEXT, asset_id TEXT, provider TEXT,
+                requested_start TEXT, requested_end TEXT
+            );
             """
         )
 
@@ -248,7 +253,7 @@ class MetricReaderTests(unittest.TestCase):
         ]:
             with self.subTest(metric=metric):
                 res = self.read(metric, allowed=allowed)
-                self.assertEqual(res["status"], "unsupported")
+                self.assertEqual(res["status"], "not_configured" if metric == "keywords.top10" else "unsupported")
                 self.assertIsNone(res["summary"]["value"])
 
     def test_multiple_providers_supported_by_same_reader(self):

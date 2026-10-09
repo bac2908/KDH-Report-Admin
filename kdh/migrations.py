@@ -207,6 +207,84 @@ CREATE INDEX IF NOT EXISTS idx_source_snapshots_asset
 ON source_snapshots(asset_id, created_at);
 """,
     ),
+    
+    (
+        5,
+        "marketing_dataset_reviews",
+        """
+CREATE TABLE IF NOT EXISTS marketing_dataset_reviews (
+    id TEXT PRIMARY KEY,
+    dataset_id TEXT NOT NULL REFERENCES datasets(id),
+    client_id TEXT NOT NULL REFERENCES clients(id),
+    reviewer_id TEXT NOT NULL REFERENCES users(id),
+    dataset_sha256 TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK (
+        decision IN ('needs_changes', 'approved_internal')
+    ),
+    note TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_marketing_reviews_dataset
+ON marketing_dataset_reviews(dataset_id, created_at);
+""",
+    ),
+    (
+        6,
+        "marketing_verified_releases",
+        """
+CREATE TABLE IF NOT EXISTS source_attestations (
+    sync_run_id TEXT PRIMARY KEY REFERENCES sync_runs(id),
+    claims TEXT NOT NULL,
+    seal TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS marketing_release_approvals (
+    id TEXT PRIMARY KEY,
+    candidate_id TEXT NOT NULL REFERENCES datasets(id),
+    origin_dataset_id TEXT NOT NULL REFERENCES datasets(id),
+    client_id TEXT NOT NULL REFERENCES clients(id),
+    reviewer_id TEXT NOT NULL REFERENCES users(id),
+    internal_review_id TEXT NOT NULL REFERENCES marketing_dataset_reviews(id),
+    dataset_sha256 TEXT NOT NULL,
+    candidate_sha256 TEXT NOT NULL,
+    decision TEXT NOT NULL CHECK (decision IN ('release_approved','release_blocked')),
+    note TEXT NOT NULL,
+    checks TEXT NOT NULL,
+    approved_opportunity_ids TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_release_approvals_candidate
+ON marketing_release_approvals(candidate_id, created_at);
+CREATE TABLE IF NOT EXISTS marketing_release_snapshots (
+    dataset_id TEXT PRIMARY KEY REFERENCES datasets(id),
+    candidate_id TEXT NOT NULL REFERENCES datasets(id),
+    approval_id TEXT NOT NULL REFERENCES marketing_release_approvals(id),
+    version INTEGER NOT NULL,
+    content_sha256 TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(candidate_id, version)
+);
+""",
+    ),
+    (
+        7,
+        "report_viewer_grants",
+        """
+CREATE TABLE IF NOT EXISTS report_viewer_grants (
+    report_id TEXT NOT NULL,
+    client_id TEXT NOT NULL REFERENCES clients(id),
+    user_id TEXT NOT NULL REFERENCES users(id),
+    min_revision INTEGER NOT NULL DEFAULT 1 CHECK (min_revision>0),
+    max_revision INTEGER,
+    active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+    granted_by TEXT NOT NULL REFERENCES users(id),
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY(report_id,user_id),
+    CHECK (max_revision IS NULL OR max_revision>=min_revision)
+);
+""",
+    ),
 ]
 
 

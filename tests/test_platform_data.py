@@ -171,7 +171,7 @@ class PlatformDataTests(unittest.TestCase):
         self.assertEqual(json.loads(row["payload"]), clean)
 
     def test_migration_four_is_idempotent_and_preserves_snapshots(self):
-        self.assertEqual([m[0] for m in MIGRATIONS], [1, 2, 3, 4])
+        self.assertEqual([m[0] for m in MIGRATIONS], [1, 2, 3, 4, 5, 6, 7])
         args = self.snapshot_args()
         self.platform.save_source_snapshot(**args, payload={"totals": {}, "status": "empty"})
         before = self.store.all("SELECT * FROM source_snapshots")

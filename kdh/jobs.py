@@ -628,7 +628,17 @@ class Worker:
 
                 fetch = lambda n=name: demo_source(n, p)
 
-            result = source_result(name, p, fetch)
+            from .marketing_provenance import AdapterResult, record_adapter_receipt
+            adapter_receipt = []
+            provider_fetch = fetch
+
+            def captured_fetch():
+                response = provider_fetch()
+                if isinstance(response, AdapterResult):
+                    adapter_receipt.append(response.receipt)
+                return response
+
+            result = source_result(name, p, captured_fetch)
 
             if sync_id:
                 result = self._finish_google_sync(
@@ -637,6 +647,8 @@ class Worker:
                     result=result,
                     asset_id=asset_id,
                 )
+                if adapter_receipt and not p.get('demo') and result['status'] in ('ready', 'delayed', 'empty', 'incomplete'):
+                    record_adapter_receipt(self.store, self.google.cipher, sync_id, result, adapter_receipt[0])
 
             sources[name] = result
             steps[-1].update(

@@ -251,6 +251,9 @@ def build_marketing_preview(
                     "evidence_status", "not_ready"
                 ),
                 "value": value,
+                "comparison": evidence.get('comparison'),
+                "daily_observations": result.get('daily_observations', []),
+                "freshness": evidence.get('freshness'),
                 "evidence_id": evidence.get(
                     "evidence_id"
                 ),
@@ -272,6 +275,9 @@ def build_marketing_preview(
                     "asset_id": scope.get("asset_id"),
                     "period": period,
                     "value": value,
+                    "comparison": evidence.get('comparison'),
+                    "daily_observations": result.get('daily_observations', []),
+                    "freshness": evidence.get('freshness'),
                     "lineage": evidence.get(
                         "lineage", {}
                     ),

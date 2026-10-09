@@ -20,6 +20,13 @@ from .reports import import_legacy, publish, save_report, save_upload, valid_dat
 from .report_bundle_routes import register_report_bundle_routes
 from .metric_routes import register_metric_routes
 from .marketing_preview import register_marketing_preview_routes
+from .marketing_dataset import register_marketing_dataset_routes
+from .marketing_review import register_marketing_review_routes
+from .marketing_release import register_marketing_release_routes
+from .marketing_source_check import register_marketing_source_routes
+from .marketing_approval import register_marketing_approval_routes
+from .marketing_publication import register_marketing_publication_routes
+from .viewer_access import register_viewer_routes
 
 def _bootstrap_initial_admin(store, email, password):
     if store.one('SELECT id FROM users LIMIT 1'):
@@ -54,6 +61,7 @@ def create_app(overrides=None):
     store = Store(app.config['DATA_DIR'], app.config['DATABASE_URL'])
     _bootstrap_initial_admin(store, app.config['INITIAL_ADMIN_EMAIL'], app.config['INITIAL_ADMIN_PASSWORD'])
     google = Google(store, app.config)
+    store.report_cipher = google.cipher
     meta = Meta(store, app.config, google.cipher)
     worker = Worker(store, google)
     app.extensions.update(store=store, google=google, meta=meta, worker=worker)
@@ -86,12 +94,47 @@ def create_app(overrides=None):
         if report_type not in TYPES or not allowed(g.user, report_type):
             raise Problem('Bạn chưa được cấp quyền cho báo cáo này.', 403)
 
+
     def get_dataset(dataset_id):
-        row = store.one('SELECT * FROM datasets WHERE id=?', (dataset_id,))
+        row = store.one(
+            "SELECT * FROM datasets WHERE id=?",
+            (dataset_id,),
+        )
+
         if not row:
-            raise Problem('Không tìm thấy kết quả báo cáo.', 404)
-        check_report(row['report_type'])
-        return json.loads(row['data'])
+            raise Problem(
+                "Không tìm thấy kết quả báo cáo.",
+                404,
+            )
+
+        check_report(row["report_type"])
+
+        data = json.loads(row["data"])
+
+        # Protect internal Marketing Datasets from legacy
+        # viewer/operator endpoints, even when an ID is known.
+        if isinstance(data, dict):
+            kind = data.get("dataset_kind")
+
+            internal_marketing = (
+                (
+                    isinstance(kind, str)
+                    and kind.startswith("marketing_")
+                )
+                or "marketing" in data
+            )
+
+            if (
+                internal_marketing
+                and g.user["role"] != "admin"
+            ):
+                raise Problem(
+                    "Dataset Marketing chỉ dành cho Admin.",
+                    403,
+                    "marketing_dataset_admin_only",
+                )
+
+        return data
 
     def get_report(report_id):
         row = store.one('SELECT * FROM reports WHERE id=?', (report_id,))
@@ -624,4 +667,11 @@ def create_app(overrides=None):
     register_report_bundle_routes(app, store, require, body)
     register_metric_routes(app, store, require)
     register_marketing_preview_routes(app, store, require)
+    register_marketing_dataset_routes(app, store, require, body)
+    register_marketing_review_routes(app, store, require, body)
+    register_marketing_release_routes(app, store, require, body)
+    register_marketing_source_routes(app, store, require)
+    register_marketing_approval_routes(app, store, require, body)
+    register_marketing_publication_routes(app, store, require, body)
+    register_viewer_routes(app, store, require, body)
     return app

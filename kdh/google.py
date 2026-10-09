@@ -16,6 +16,7 @@ from cryptography.fernet import Fernet
 
 from .core import Problem, now, pack, digest
 from .platform_data import DEFAULT_CLIENT_ID, PlatformData
+from .marketing_provenance import seal_google_result
 SCOPES = ['openid', 'email', 'https://www.googleapis.com/auth/analytics.readonly',
           'https://www.googleapis.com/auth/webmasters.readonly', 'https://www.googleapis.com/auth/spreadsheets.readonly']
 LABELS = {'ga4': 'Google Analytics 4', 'gsc': 'Search Console', 'keywords': 'Keyword Tracking', 'gmb': 'Google Business Profile'}
@@ -284,7 +285,8 @@ class Google:
             raise SourceError('invalid_data', f'Chưa cấu hình tài sản cho {LABELS[source]}. Admin cần bổ sung cấu hình nguồn rồi thử lại.')
         token = self.access_token()
         headers = {'Authorization': 'Bearer ' + token}
-        return getattr(self, source)(params, headers)
+        data = getattr(self, source)(params, headers)
+        return seal_google_result(self.cipher, source, params, data)
 
     def ga4(self, p, headers):
         metrics = ['activeUsers', 'sessions', 'screenPageViews', 'engagementRate']
@@ -440,6 +442,8 @@ def parse_keywords(values, year=None):
 def source_result(source, params, fetch):
     base = {'source': source, 'label': LABELS[source], 'requested_start': params['start'], 'requested_end': params['end'],
             'fetched_at': now(), 'latest_available_date': None, 'status': 'pending', 'warnings': []}
+    if params.get('compare'):
+        base.update(previous_requested_start=params['previous_start'], previous_requested_end=params['previous_end'])
     try:
         result = fetch()
         base.update(result)

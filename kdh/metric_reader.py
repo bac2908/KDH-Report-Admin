@@ -186,7 +186,7 @@ def read_metric_series(
         days=days,
     )
 
-    if metric["kind"] != "source" or metric["grain"] != "day":
+    if metric["kind"] != "source" or (metric["grain"] != "day" and source != 'keywords'):
         result["status"] = "unsupported"
         result["reason"] = (
             "Requires a separate snapshot/month/"
@@ -257,6 +257,11 @@ def read_metric_series(
 
     result["asset_id"] = asset_id
     result["currency"] = chosen["currency"]
+
+    from .metric_snapshot import snapshot_series
+    snapshot = snapshot_series(store, metric, result)
+    if snapshot is not None:
+        return snapshot
 
     # Latest sync overlapping the requested reporting period.
     latest = store.one(

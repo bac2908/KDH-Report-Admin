@@ -1,3 +1,4 @@
+
 name: kdh-report-admin
 
 services:
@@ -83,12 +84,19 @@ services:
       DASHBOARD_URL: ${DASHBOARD_URL:-http://127.0.0.1:8088}
 
     volumes:
-      # Giữ volume cũ để rollback SQLite/local files nếu cần.
+      # Giu nguyen volume du lieu Admin
       - admin-data:/app/instance
 
+      # Bao cao cu
       - type: bind
         source: ${LEGACY_REPORT_DIR:-../KDH-Report/KDH-Report}
         target: /legacy
+        read_only: true
+
+      # KDH Marketing Data Pack DEMO
+      - type: bind
+        source: ${KDH_DEMO_PACK_DIR}
+        target: /demo-pack
         read_only: true
 
     restart: unless-stopped

@@ -15,6 +15,73 @@ FAILED_SOURCES = {'failed', 'empty', 'disconnected', 'permission_denied', 'api_e
                   'invalid_data', 'revoked', 'timeout'}
 
 
+def _guard_marketing_snapshot(payload, store=None, db=None, publication=False):
+    """Block internal Marketing datasets from customer publication.
+
+    Checks captured snapshot data, not mutable Dataset rows.
+    Legacy Report Bundles without Marketing markers are unchanged.
+
+    All Marketing datasets remain internal-only until a separate,
+    audited review/publishing contract is implemented.
+    """
+    sections = (
+        payload.get("sections")
+        if isinstance(payload, dict)
+        else None
+    )
+
+    if not isinstance(sections, dict) or not sections:
+        raise Problem(
+            "Report Bundle snapshot khong hop le.",
+            409,
+            "invalid_report_snapshot",
+        )
+
+    for section_key, section in sections.items():
+        if not isinstance(section, dict):
+            raise Problem(
+                "Report Bundle section khong hop le.",
+                409,
+                "invalid_report_snapshot",
+            )
+
+        data = section.get("data")
+
+        if not isinstance(data, dict):
+            raise Problem(
+                "Report Bundle section thieu Dataset.",
+                409,
+                "invalid_report_snapshot",
+            )
+
+        dataset_kind = data.get("dataset_kind")
+
+        # The Dataset Builder introduced in 8.8.2 uses
+        # both dataset_kind and marketing metadata.
+        # Block if either marker is present, even if someone
+        # changes valid=1 or publishable=True in the payload.
+        is_marketing_dataset = (
+            (
+                isinstance(dataset_kind, str)
+                and dataset_kind.startswith("marketing_")
+            )
+            or "marketing" in data
+        )
+
+        if is_marketing_dataset:
+            if dataset_kind == 'marketing_release_snapshot_v1':
+                from .marketing_publication import validate_release_snapshot
+                validate_release_snapshot(data, store, db, publication)
+                continue
+            raise Problem(
+                "Section '" + str(section_key) + "' "
+                "chua du dieu kien xuat ban. "
+                "Dataset Marketing chi duoc xem truoc noi bo; "
+                "can quy trinh xac minh va phe duyet rieng.",
+                409,
+                "marketing_review_required",
+            )
+
 def _secret_key(key):
     normalized = re.sub(r'[^a-z0-9]', '', key.lower())
     return any(word in normalized for word in ('token', 'secret', 'password', 'credential',
@@ -207,7 +274,7 @@ def validate_sections(db, sections, metadata, inherited=None):
         if not isinstance(section, dict) or set(section) != {'key', 'dataset_id'}:
             raise Problem('Mỗi section chỉ nhận key và dataset_id; thứ tự theo danh sách gửi lên.')
         key, dataset_id = section['key'], section['dataset_id']
-        if not isinstance(key, str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,63}', key) or key in seen:
+        if not isinstance(key, str) or not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', key) or key in seen:
             raise Problem('Section key phải hợp lệ và không trùng nhau.')
         seen.add(key)
         if not isinstance(dataset_id, str) or not 1 <= len(dataset_id) <= 128:
@@ -295,11 +362,40 @@ def _payload(row):
     return json.loads(row['snapshot_payload'])
 
 
-def get_bundle(store, report_id, revision=None, published_only=False):
-    # One saved value, no joins to mutable client/settings/dataset/provider tables.
-    row = (get_latest_revision(store, report_id, published_only) if revision is None else
-           get_revision(store, report_id, revision, published_only))
-    return _payload(row)
+
+def get_bundle(
+    store,
+    report_id,
+    revision=None,
+    published_only=False,
+):
+    # Read captured snapshot only.
+    # Never rebuild a published report from mutable datasets.
+    row = (
+        get_latest_revision(
+            store,
+            report_id,
+            published_only,
+        )
+        if revision is None
+        else get_revision(
+            store,
+            report_id,
+            revision,
+            published_only,
+        )
+    )
+
+    payload = _payload(row)
+
+    # Admin may preview drafts internally.
+    # The internal API used by KDH-Report-New must
+    # never serve an unsafe Marketing snapshot.
+    if published_only:
+        _guard_marketing_snapshot(payload, store)
+
+    return payload
+
 
 
 def _write_sections(db, bundle_id, sections):
@@ -385,6 +481,8 @@ def _publish(store, actor, report_id, revision, status, session_id):
         if row['status'] == 'final' and status != 'final':
             raise Problem('Không thể hạ trạng thái FINAL.', 409, 'immutable_revision')
         payload = _payload(row)
+        _guard_marketing_snapshot(payload, store, db, publication=row['status'] != status)
+
         if row['status'] == status:
             return {'report_id': report_id, 'revision': revision, 'status': status}
         if status == 'final' and (payload['quality']['status'] != 'complete' or
