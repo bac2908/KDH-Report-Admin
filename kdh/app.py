@@ -27,6 +27,7 @@ from .marketing_source_check import register_marketing_source_routes
 from .marketing_approval import register_marketing_approval_routes
 from .marketing_publication import register_marketing_publication_routes
 from .viewer_access import register_viewer_routes
+from .marketing_console import register_marketing_console
 
 def _bootstrap_initial_admin(store, email, password):
     if store.one('SELECT id FROM users LIMIT 1'):
@@ -674,4 +675,5 @@ def create_app(overrides=None):
     register_marketing_approval_routes(app, store, require, body)
     register_marketing_publication_routes(app, store, require, body)
     register_viewer_routes(app, store, require, body)
+    register_marketing_console(app, store, require)
     return app

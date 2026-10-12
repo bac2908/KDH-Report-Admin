@@ -10,7 +10,7 @@ import json
 
 from cryptography.fernet import InvalidToken
 
-from .core import now, pack
+from .core import digest, now, pack
 from .platform_data import _validate_snapshot_payload
 
 
@@ -48,12 +48,12 @@ class AdapterResult(dict):
     """Receipt is an object attribute; never serialized as reporting data."""
 
 
-def seal_google_result(cipher, source, params, data):
+def seal_google_result(cipher, source, params, data, external_id):
     _validate_snapshot_payload(data)
     result = AdapterResult(copy.deepcopy(data))
     fields = sorted(set(data) - {'warnings'})
     result.receipt = seal(cipher, 'google-adapter-v1', {
-        'source': source, 'params': copy.deepcopy(params), 'fields': fields,
+        'source': source, 'external_id': external_id, 'params': copy.deepcopy(params), 'fields': fields,
         'sha256': sha({key: data[key] for key in fields}),
     })
     return result
@@ -66,6 +66,30 @@ def _claims(run, snapshot):
             'requested_end': run['requested_end'], 'status': run['status'],
             'latest_available_date': run['latest_available_date'],
             'payload_sha256': sha(json.loads(snapshot['payload']))}
+
+
+def daily_consistent(db, run, payload):
+    """The persisted normalized rows must match the sealed adapter observations."""
+    source = payload['source']
+    field = 'entries' if source == 'keywords' else 'daily'
+    points = list(payload.get(field) or []) + list(payload.get('previous_' + field) or [])
+    expected = []
+    for point in points:
+        if source == 'keywords':
+            entity, entity_id, dimension = 'keyword', str(point.get('keyword') or '').strip(), str(point.get('url') or '').strip()
+            metrics = {'position': point.get('position')}
+        else:
+            entity, entity_id, dimension = 'website', '', ''
+            fields = {'active_users': 'activeUsers', 'sessions': 'sessions', 'page_views': 'screenPageViews',
+                      'engagement_rate': 'engagementRate'} if source == 'ga4' else {key: key for key in ('clicks', 'impressions', 'ctr', 'position')}
+            metrics = {key: point.get(value) for key, value in fields.items()}
+        expected.append(sha([run['client_id'], run['asset_id'], 'google', entity, entity_id,
+                             point['date'], dimension, metrics, digest(pack(point))]))
+    actual = []
+    for row in db.execute('SELECT * FROM daily_metrics WHERE sync_run_id=?', (run['id'],)).fetchall():
+        actual.append(sha([row['client_id'], row['asset_id'], row['provider'], row['entity_type'], row['entity_id'],
+                           row['metric_date'], row['dimension_key'], json.loads(row['metrics']), row['source_hash']]))
+    return bool(expected) and sorted(expected) == sorted(actual)
 
 
 def record_adapter_receipt(store, cipher, sync_id, result, receipt):
@@ -90,8 +114,12 @@ def record_adapter_receipt(store, cipher, sync_id, result, receipt):
             return False
         if sha(json.loads(snapshot['payload'])) != sha(result):
             return False
+        asset = db.execute('SELECT external_id FROM source_assets WHERE id=?', (run['asset_id'],)).fetchone()
+        if not asset or asset['external_id'] != proof.get('external_id') or not daily_consistent(db, run, result):
+            return False
         claims = _claims(run, snapshot)
         claims['params'] = params
+        claims['external_id'] = proof['external_id']
         db.execute('INSERT INTO source_attestations (sync_run_id,claims,seal,created_at) VALUES (?,?,?,?)',
                    (sync_id, pack(claims), seal(cipher, 'source-attestation-v1', claims), now()))
     return True
@@ -108,6 +136,8 @@ def verify_adapter_receipt(db, cipher, run, snapshot):
         if any(claims.get(key) != value for key, value in _claims(run, snapshot).items()):
             return False
         job = db.execute('SELECT params FROM jobs WHERE id=?', (run['job_id'],)).fetchone()
-        return bool(job and json.loads(job['params']) == claims.get('params') and not is_demo(claims['params']))
+        asset = db.execute('SELECT external_id FROM source_assets WHERE id=?', (run['asset_id'],)).fetchone()
+        return bool(job and asset and asset['external_id'] == claims.get('external_id')
+                    and json.loads(job['params']) == claims.get('params') and not is_demo(claims['params']))
     except (ValueError, TypeError, KeyError):
         return False

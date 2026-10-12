@@ -1,0 +1,26 @@
+.marketing-console { max-width: 1200px; margin: 0 auto; padding: 28px; color: #172c48; }
+.marketing-header { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 28px; }
+.marketing-console h1 { margin: 8px 0 12px; font-size: clamp(26px, 4vw, 36px); }
+.marketing-console h2 { font-size: 20px; margin: 0 0 16px; }
+.marketing-console p { color: #52677f; line-height: 1.65; }
+.marketing-console .card { padding: 24px; margin: 20px 0; min-width: 0; }
+.marketing-console label { display: block; margin: 16px 0 8px; font-weight: 600; }
+.marketing-console input, .marketing-console select, .marketing-console textarea { width: 100%; min-width: 0; padding: 11px; border: 1px solid #c8d5e3; border-radius: 7px; font: inherit; background: white; }
+.marketing-console textarea { min-height: 86px; }
+.marketing-console button { margin-top: 14px; }
+.marketing-console button:disabled { opacity: .48; cursor: not-allowed; }
+.workflow-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.workflow-row { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; }
+.workflow-row > div, .workflow-row > select { flex: 1; min-width: 180px; }
+.workflow-resume form + form { margin-top: 20px; }
+.workflow-table { overflow-x: auto; }
+.workflow-table table { width: 100%; border-collapse: collapse; }
+.workflow-table td, .workflow-table th { padding: 12px; text-align: left; border-bottom: 1px solid #e3eaf2; white-space: normal; }
+#workflow-message { padding: 14px 18px; background: #e9f7f4; border-radius: 8px; margin-top: 20px; overflow-wrap: anywhere; }
+#workflow-message[data-error="true"] { background: #fff1ed; color: #9c3020; }
+.workflow-id { font-size: 12px; overflow-wrap: anywhere; color: #64748b; }
+.workflow-issues { background: #fff7e7; padding: 14px; border-radius: 8px; }
+.marketing-console .opportunity-choice { display: flex; gap: 10px; align-items: start; font-weight: 400; }
+.opportunity-choice input { width: 18px; margin-top: 4px; }
+.marketing-console :focus-visible { outline: 3px solid #43bfb3; outline-offset: 3px; }
+@media(max-width: 760px) { .marketing-console { padding: 16px; } .workflow-columns { grid-template-columns: 1fr; gap: 0; } .marketing-header { flex-direction: column; } .workflow-row > button { width: 100%; } }

@@ -119,6 +119,12 @@ def register_viewer_routes(app, store, require, body):
                 if not grant and not admin_access:
                     continue
                 payload = _payload(row)
+                if payload.get('client', {}).get('id') != row['client_id']:
+                    continue
+                try:
+                    _guard_marketing_snapshot(payload, store)
+                except Problem:
+                    continue
                 if not admin_access and any(not allowed(user, section['report_type']) for section in payload['sections'].values()):
                     continue
                 selected.add(row['bundle_key'])

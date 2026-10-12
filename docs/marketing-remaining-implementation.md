@@ -2,6 +2,15 @@
 
 Rà soát working tree ngày 09/10/2026. Không đồng nhất code local, GitHub và Docker.
 
+## Kết quả triển khai cập nhật 10/10/2026
+
+- Phase 1: thêm provenance receipt ở adapter, source verification kiểm tra cả normalized rows/snapshot/asset ngoài hệ thống, approval append-only với hashes. GA4/GSC/Keywords đã kiểm thử bằng transport fixture trong DB riêng.
+- Phase 2: release snapshot riêng có version/seal, mở rộng guard chặt chẽ; Candidate vẫn bị chặn cả provisional/final. Snapshot đã published không đọc lại live để thay đổi nội dung.
+- Phase 3: Admin `/marketing` và UI mở lại workflow, review/publish/grant; New login/session/ACL/revision, mapper và dashboard đã duyệt, preview nội bộ riêng và đóng mock trong production.
+- Phase 4: **295/295 Python Admin (SQLite+PostgreSQL, 0 skip), 69/69 UI, 184/184 New, 1/1 HTTP E2E**. Docker build/smoke và Chromium browser workflow với 21 ảnh responsive tách biệt đã đạt. Xem [kết quả](KDH_TEST_RESULTS.md).
+- Còn chờ: cấp quyền và đối chiếu dữ liệu provider thật, các adapter planned/OAuth-only. Không có dữ liệu giả được ghi vào DB runtime để làm PASS.
+- Bộ tài liệu bàn giao đầy đủ bắt đầu tại [KDH_HANDOVER.md](KDH_HANDOVER.md). Chưa cập nhật container phục vụ hoặc đẩy GitHub. Phần “điểm xuất phát” và “lỗi/thiếu” bên dưới mô tả audit trước triển khai, không phải lỗi còn tồn tại.
+
 ## Điểm xuất phát
 
 - Admin: `D:\KDH-Report-Admin`, branch `main`, HEAD `d005d2e`; có thay đổi chưa commit ở app, migrations, Publishing Guard và các module/test Marketing Dataset, Review, Release. Giữ lại các thay đổi này.

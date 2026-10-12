@@ -1,5 +1,20 @@
 # KDH Report — bối cảnh toàn hệ thống
 
+## Cập nhật tiếp nối 10/10/2026 — đọc trước các mốc lịch sử bên dưới
+
+Trạng thái code local hiện tại đã đi xa hơn các mục 5–9 viết ngày 07–08/10. Xem [KDH_HANDOVER.md](KDH_HANDOVER.md) và [audit Marketing](marketing-remaining-implementation.md) để tiếp tục đúng việc.
+
+- Admin local HEAD `5c3d657`, New local HEAD `028d317`; có thay đổi chưa commit ở cả hai. Không đồng nhất với GitHub hoặc image đang chạy.
+- Đã có Platform Dataset, Marketing Dataset/Review/Candidate, Source Verification/Release Approval, Release Snapshot riêng, guard publication và ACL theo report/revision. Migrations mới là **6, 7**, giữ migrations trước.
+- Admin có `/marketing` để mở lại snapshot, kiểm tra, duyệt, tạo release/Bundle, publish và cấp quyền Viewer.
+- New có repository/mapper/service/templates Bundle, `/login`, `/reports/{id}?revision=N` và internal preview riêng cho Admin. New gọi HTTP Admin; không đọc DB Admin hay gọi provider. Production đóng dashboard mock cũ.
+- Kiểm thử gần nhất: **295 Admin Python đạt trên SQLite/PostgreSQL, không skip; 69 UI đạt; 184 New pytest đạt; 1 HTTP E2E đạt**. Đã build và smoke hai container test; New được rebuild ngày 10/10, không nâng cấp runtime 8090/8080.
+- Nguồn thật còn **BLOCKED** do chưa nghiệm thu permission/data KinderHealth. 12 nguồn/211 KPI là Catalog; luồng verification mới hiện cho GA4/GSC/Keyword Sheet có adapter và dữ liệu đủ kỳ. Các adapter khác không được mặc định là đã có.
+- Đã chạy Chromium headless qua Playwright có sẵn: toàn bộ workflow, login/chart/menu/grant/revoke, 7 màn hình ở 1440/768/390px đạt. Sửa lỗi browser login do Referrer-Policy, focus nút logout và nhãn trục tỷ lệ; ảnh và log ở `test-results/marketing-browser/`.
+- Không tự commit/push, sửa `.env`, đổi khóa mã hóa hoặc ghi fixture vào runtime. Các container test và PostgreSQL test đều tách biệt, không dùng volume khách hàng.
+
+**Các phần phía dưới là bối cảnh/quyết định kiến trúc và mốc lịch sử; các câu “chưa có mapper”, “chưa có Platform Dataset”, migration 4 và số dữ liệu cũ không còn mô tả code mới.**
+
 Đối chiếu kiến trúc hai repository ngày **07/10/2026**; cập nhật phần Data Foundation và Docker Admin ngày **08/10/2026**. Nguồn: yêu cầu của chủ dự án, sơ đồ “KDH-Report System Architecture Flow”, code và trạng thái Docker. Đây là tài liệu tiếp nối công việc; trạng thái triển khai và các điểm đang dở phải được kiểm tra lại khi code thay đổi.
 
 ## 1. Mục tiêu và các quyết định đã chốt

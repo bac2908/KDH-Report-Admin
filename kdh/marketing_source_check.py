@@ -6,7 +6,7 @@ import json
 from flask import jsonify
 
 from .core import Problem
-from .marketing_provenance import is_demo, sha, verify_adapter_receipt
+from .marketing_provenance import daily_consistent, is_demo, sha, verify_adapter_receipt
 from .marketing_release import _release_state
 from .metric_catalog import SOURCES, get_metric
 from .metric_snapshot import FIELDS, period_snapshot
@@ -69,6 +69,14 @@ def candidate_state(store, db, candidate_id):
 
 
 def check_candidate(store, db, candidate_id):
+    try:
+        return _check_candidate(store, db, candidate_id)
+    except (ValueError, TypeError, KeyError, OverflowError):
+        raise Problem('Snapshot hoặc truy vết nguồn không hợp lệ. Cần kiểm tra lại dữ liệu đã lưu.',
+                      409, 'invalid_source_snapshot') from None
+
+
+def _check_candidate(store, db, candidate_id):
     row, candidate, original, latest, assessment, issues = candidate_state(store, db, candidate_id)
     preview = original['marketing']['preview']
     source = original['params']['source']
@@ -122,6 +130,8 @@ def check_candidate(store, db, candidate_id):
                 continue
             if is_demo(payload):
                 problems.append('demo_data')
+            if not daily_consistent(db, run, payload):
+                problems.append('daily_metrics_mismatch')
             job = reader.one('SELECT kind,params FROM jobs WHERE id=?', (run['job_id'],)) if run['job_id'] else None
             if not job or job['kind'] != 'analysis' or is_demo(json.loads(job['params'])):
                 problems.append('provider_job_not_confirmed')
@@ -166,6 +176,13 @@ def check_candidate(store, db, candidate_id):
     valued = {item.get('evidence_id') for item in preview.get('widgets', []) if item.get('value') is not None}
     if valued != {item.get('evidence_id') for item in evidence}:
         issues.append('widget_evidence_mismatch')
+    evidence_by_id = {item['evidence_id']: item for item in evidence}
+    for widget in preview.get('widgets', []):
+        if widget.get('value') is None:
+            continue
+        card = evidence_by_id.get(widget.get('evidence_id'), {})
+        if any(widget.get(key) != card.get(key) for key in ('value', 'metric_id', 'source', 'asset_id', 'comparison', 'daily_observations')):
+            issues.append('widget_evidence_mismatch')
     issues = list(dict.fromkeys(issues))
     return {
         'schema_version': '1.0', 'candidate_id': candidate_id, 'dataset_id': original['id'],

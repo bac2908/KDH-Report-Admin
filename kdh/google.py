@@ -286,7 +286,8 @@ class Google:
         token = self.access_token()
         headers = {'Authorization': 'Bearer ' + token}
         data = getattr(self, source)(params, headers)
-        return seal_google_result(self.cipher, source, params, data)
+        return seal_google_result(self.cipher, source, params, data,
+                                  str(self.config[required[source][0]]).strip())
 
     def ga4(self, p, headers):
         metrics = ['activeUsers', 'sessions', 'screenPageViews', 'engagementRate']

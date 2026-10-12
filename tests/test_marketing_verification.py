@@ -57,7 +57,7 @@ class VerificationTests(unittest.TestCase):
     def candidate(self):
         self.run = self.sync()
         result = self.client.post('/api/marketing/datasets', json={
-            'source': 'gsc', 'start': self.params['start'], 'end': self.params['end'],
+            'source': self.params['report_type'], 'start': self.params['start'], 'end': self.params['end'],
             'asset_id': self.run['asset_id']}, headers=self.headers)
         self.assertEqual(result.status_code, 201, result.json)
         self.origin_id = result.json['dataset_id']
@@ -178,6 +178,61 @@ class VerificationTests(unittest.TestCase):
             self.store.execute('UPDATE users SET role=? WHERE id=?', (role, self.actor))
             self.assertEqual(self.client.get(path).status_code, 403)
             self.assertEqual(self.client.get(f'/api/datasets/{candidate}').status_code, 403)
+
+    def test_external_asset_change_cannot_relabel_provider_origin(self):
+        candidate = self.candidate()
+        self.store.execute("UPDATE source_assets SET external_id='https://other.example.test/' WHERE id=?", (self.run['asset_id'],))
+        self.assertIn('provider_origin_unconfirmed', self.check(candidate)['issues'])
+        self.assertEqual(self.approve(candidate).status_code, 409)
+
+    def test_daily_metrics_and_source_snapshot_must_agree(self):
+        candidate = self.candidate()
+        self.store.execute('UPDATE daily_metrics SET metrics=? WHERE sync_run_id=?', (pack({'clicks': 9999}), self.run['id']))
+        self.assertIn('daily_metrics_mismatch', self.check(candidate)['issues'])
+        self.assertEqual(self.approve(candidate).status_code, 409)
+
+    def test_invalid_snapshot_returns_safe_conflict(self):
+        candidate = self.candidate()
+        self.store.execute("UPDATE source_snapshots SET payload='not-json' WHERE sync_run_id=?", (self.run['id'],))
+        response = self.client.get(f'/api/marketing/release-candidates/{candidate}/source-check')
+        self.assertEqual(response.status_code, 409, response.json)
+        self.assertEqual(response.json['code'], 'invalid_source_snapshot')
+
+    def test_ga4_unique_users_uses_period_total_not_daily_sum(self):
+        self.params = filters({**self.params, 'report_type': 'ga4'})
+        def ga4_response(method, url, **kwargs):
+            query = kwargs['json']
+            dims = [item['name'] for item in query.get('dimensions', [])]
+            if dims and dims != ['date']:
+                return {'rows': []}
+            previous = query['dateRanges'][0]['startDate'] == '2026-08-29'
+            dates = ('20260829', '20260830', '20260831') if previous else ('20260901', '20260902', '20260903')
+            values = [10, 20, 30, .5] if dims else [22, 60, 90, .5]
+            return {'rows': [{'dimensionValues': [{'value': day}] if dims else [],
+                'metricValues': [{'value': str(value)} for value in values]} for day in (dates if dims else [''])],
+                'metadata': {'timeZone': 'Asia/Ho_Chi_Minh'}}
+        self.response = ga4_response
+        candidate = self.candidate()
+        checks = self.check(candidate)
+        self.assertEqual(checks['issues'], [])
+        data = self.client.get('/api/datasets/' + candidate).json
+        card = next(item for item in data['marketing']['preview']['evidence_cards'] if item['metric_id'] == 'ga4.active_users')
+        self.assertEqual(card['value'], 22)
+        self.assertEqual(sum(item['value'] for item in card['daily_observations']), 30)
+
+    def test_keyword_snapshot_counts_ranks_instead_of_summing_positions(self):
+        self.params = filters({**self.params, 'report_type': 'keywords'})
+        self.app.config.update(KEYWORD_SPREADSHEET_ID='isolated-sheet', KEYWORD_SHEET='Ranking')
+        self.response = lambda *args, **kwargs: {'values': [
+            ['keyword', 'position', 'date', 'url'], ['fixture-a', '5', '2026-09-03', 'https://fixture.example.test/a'],
+            ['fixture-b', '15', '2026-09-03', 'https://fixture.example.test/b'],
+            ['fixture-a', '12', '2026-08-31', 'https://fixture.example.test/a'],
+            ['fixture-b', '17', '2026-08-31', 'https://fixture.example.test/b']]}
+        candidate = self.candidate()
+        self.assertEqual(self.check(candidate)['issues'], [])
+        data = self.client.get('/api/datasets/' + candidate).json
+        card = next(item for item in data['marketing']['preview']['evidence_cards'] if item['metric_id'] == 'keywords.top10')
+        self.assertEqual((card['value'], card['comparison']['previous_value']), (1, 0))
 
 
 @unittest.skipUnless(os.getenv('TEST_DATABASE_URL'), 'Requires disposable PostgreSQL')

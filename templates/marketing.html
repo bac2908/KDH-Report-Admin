@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duyệt & phát hành · KDH Report Admin</title><link rel="icon" href="/static/logo.svg">
+<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/marketing.css">
+<script type="module" src="/static/marketing.js"></script></head>
+<body><main class="marketing-console" id="marketing-console">
+<header class="marketing-header"><a href="/">← KDH Report Admin</a><span>KinderHealth · Quản trị báo cáo</span></header>
+<p class="eyebrow">KIỂM DUYỆT MARKETING</p><h1>Từ dữ liệu đến báo cáo đã duyệt</h1>
+<p>Kiểm tra KPI và bằng chứng, duyệt nội dung, xác minh nguồn rồi phát hành một phiên bản bất biến cho khách hàng.</p>
+<div id="workflow-message" role="status" aria-live="polite">Đang tải quy trình…</div>
+<section class="card workflow-resume"><h2>Tiếp tục công việc đã lưu</h2>
+<form id="resume-form"><label for="snapshot-id">Dataset / bản chờ duyệt / bản phát hành</label><div class="workflow-row"><select id="snapshot-id" required><option value="">Chưa tải danh sách</option></select><button class="btn secondary">Mở</button><button class="btn secondary" type="button" id="refresh-workflow">Làm mới</button></div></form>
+<form id="report-resume-form"><label for="existing-report">Report Bundle và revision đã lưu</label><div class="workflow-row"><select id="existing-report" required><option value="">Chưa tải danh sách</option></select><button class="btn secondary">Mở báo cáo</button></div></form></section>
+<div class="workflow-columns"><section class="card"><h2>1. Chụp dữ liệu để duyệt</h2>
+<p>Đọc dữ liệu đã đồng bộ. Cần đồng bộ lại nguồn thì vào <a href="/#sync">Đồng bộ dữ liệu</a> trước.</p>
+<form id="dataset-form"><label for="source">Nguồn dữ liệu</label><select id="source" name="source" required></select>
+<label for="asset">Tài sản</label><select id="asset" name="asset_id"><option value="">Tự chọn nếu chỉ có một tài sản phù hợp</option></select>
+<div class="workflow-row"><div><label for="start">Từ ngày</label><input type="date" id="start" name="start" required></div><div><label for="end">Đến ngày</label><input type="date" id="end" name="end" required></div></div>
+<p>Kỳ so sánh là kỳ liền trước có cùng số ngày.</p><button class="btn primary">Tạo Dataset nội bộ</button></form></section>
+<section class="card"><h2>2. Duyệt nội bộ</h2><div id="dataset-state">Chọn hoặc tạo Dataset trước.</div>
+<form id="review-form"><label for="review-note">Nhận xét nội dung (10–500 ký tự)</label><textarea id="review-note" name="note" minlength="10" maxlength="500" required></textarea>
+<div class="workflow-row"><button id="approve-internal" class="btn primary" name="decision" value="approved_internal" disabled>Duyệt nội bộ</button><button id="needs-changes" class="btn secondary" name="decision" value="needs_changes" disabled>Yêu cầu chỉnh sửa</button></div></form>
+<button id="create-candidate" class="btn secondary" disabled>Chuyển sang duyệt phát hành</button></section></div>
+<section class="card" id="snapshot-preview"><h2>Nội dung đang xem</h2><p>Chưa chọn snapshot. Giá trị thiếu luôn được hiển thị là chưa có dữ liệu.</p></section>
+<section class="card"><h2>3. Kiểm tra nguồn & duyệt phát hành</h2><p>Duyệt nội dung không xác nhận nguồn provider. Hệ thống kiểm tra bằng chứng kỹ thuật riêng.</p>
+<div class="workflow-row"><button id="check-source" class="btn secondary" disabled>Kiểm tra lại nguồn</button><a id="internal-preview" hidden target="_blank" rel="noopener noreferrer">Mở xem trước nội bộ trên New ↗</a></div>
+<div id="source-state">Chưa có bản chờ duyệt phát hành.</div><div id="opportunity-choices"></div>
+<form id="release-review-form"><label for="release-note">Lý do phê duyệt hoặc chặn (10–1000 ký tự)</label><textarea id="release-note" name="note" minlength="10" maxlength="1000" required></textarea>
+<div class="workflow-row"><button id="approve-release" class="btn primary" name="decision" value="release_approved" disabled>Duyệt phát hành</button><button id="block-release" class="btn secondary" name="decision" value="release_blocked" disabled>Chặn phát hành</button></div></form>
+<button id="create-release" class="btn primary" disabled>Tạo snapshot phát hành</button></section>
+<section class="card"><h2>4. Xuất bản & cấp quyền xem</h2><div id="publication-state">Chưa có snapshot phát hành.</div>
+<form id="bundle-form"><label for="report-name">Tên báo cáo</label><input id="report-name" name="name" maxlength="160" required placeholder="Báo cáo KinderHealth – kỳ báo cáo"><button id="create-bundle" class="btn secondary" disabled>Tạo bản nháp Report Bundle</button></form>
+<div class="workflow-row"><button id="publish-provisional" class="btn secondary" disabled>Xuất bản tạm thời</button><button id="publish-final" class="btn primary" disabled>Xuất bản chính thức</button><a id="published-link" hidden target="_blank" rel="noopener noreferrer">Mở đúng revision trên New ↗</a></div>
+<p>Muốn ghép nhiều nguồn/section, dùng <a href="/#report-builder">Report Builder</a> với các snapshot phát hành đã duyệt.</p>
+<form id="access-form"><label for="viewer">Tài khoản nhận quyền xem báo cáo đang mở</label><select id="viewer" required></select>
+<div class="workflow-row"><div><label for="min-revision">Từ revision</label><input id="min-revision" type="number" min="1" value="1" required></div><div><label for="max-revision">Đến revision (trống: bao gồm các bản sau)</label><input id="max-revision" type="number" min="1"></div></div>
+<div class="workflow-row"><button id="grant-access" class="btn secondary" name="active" value="true" disabled>Cấp / cập nhật quyền</button><button id="revoke-access" class="btn secondary" name="active" value="false" disabled>Thu hồi quyền</button></div></form><div id="access-list"></div></section>
+</main></body></html>

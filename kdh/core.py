@@ -149,6 +149,7 @@ def load_config():
         'CRON_SECRET': os.getenv('CRON_SECRET', ''),
 
         'REPORT_SERVICE_TOKEN': os.getenv('REPORT_SERVICE_TOKEN', ''),
+        'REPORT_NEW_BASE_URL': os.getenv('REPORT_NEW_BASE_URL', 'http://localhost:8080'),
 
         # Quan trọng:
 

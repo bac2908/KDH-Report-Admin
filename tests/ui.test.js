@@ -4,6 +4,112 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 import { JSDOM, VirtualConsole } from 'jsdom';
 
+// Marketing workflow uses the same production API module and real DOM forms.
+async function marketingHarness({ confirmed = false, role = 'admin' } = {}) {
+  const page = await fs.readFile(new URL('../templates/marketing.html', import.meta.url), 'utf8');
+  const dom = new JSDOM(page, { url: 'http://localhost/marketing', runScripts: 'outside-only' });
+  const w = dom.window, calls = [];
+  const params = { source: 'gsc', report_type: 'gsc', start: '2026-09-01', end: '2026-09-03', previous_start: '2026-08-29', previous_end: '2026-08-31' };
+  const preview = { widgets: [{ metric_id: 'gsc.clicks', label: '<img src=x onerror=alert(1)>', value: null, comparison: { previous_value: 0 }, unit: 'count', status: 'no_data' }], evidence_cards: [], opportunity_candidates: [] };
+  const snapshots = { origin: { id: 'origin', params, dataset_kind: 'marketing_internal_preview_v1', marketing: { preview } }, candidate: { id: 'candidate', params, dataset_kind: 'marketing_release_candidate_v1', release_candidate: { origin_dataset_id: 'origin' }, marketing: { preview } }, release: { id: 'release', params, dataset_kind: 'marketing_release_snapshot_v1', marketing: { widgets: preview.widgets } } };
+  const review = { dataset_id: 'origin', dataset_sha256: 'hash-origin', checks: { can_approve_internal: true }, issues: [], latest_review: null };
+  const approval = { state: 'release_review', latest_approval: null, checks: { candidate_sha256: 'hash-candidate', dataset_sha256: 'hash-origin', internal_review_id: 'review-1', provider_origin_confirmed: confirmed, state: confirmed ? 'provider_origin_confirmed' : 'release_blocked', issues: confirmed ? [] : ['provider_origin_unconfirmed'], checks: [] } };
+  let report = null;
+  w.fetch = async (path, options) => {
+    const body = options.body ? JSON.parse(options.body) : undefined;
+    calls.push({ path, body, method: options.method, headers: options.headers });
+    let result;
+    if (path === '/api/auth/me') result = { user: { role }, csrf: 'fixture-csrf' };
+    else if (path === '/api/marketing/workflow') result = { client_id: 'client_kinderhealth', new_url: 'http://localhost:8080', sources: [{ id: 'gsc', label: 'Search Console' }], assets: [], snapshots: Object.values(snapshots).map(s => ({ id: s.id, kind: s.dataset_kind, source: 'gsc', start: params.start, end: params.end })) };
+    else if (path === '/api/users') result = [{ id: 'viewer', name: 'Viewer', email: 'test@example.test', active: 1 }];
+    else if (path.startsWith('/api/datasets/')) result = snapshots[path.split('/').at(-1)];
+    else if (path === '/api/marketing/datasets') result = { dataset_id: 'origin' };
+    else if (path.endsWith('/review')) {
+      if (options.method === 'POST') review.latest_review = { id: 'review-1', decision: body.decision, matches_current_snapshot: true };
+      result = review;
+    } else if (path.endsWith('/release-candidates')) result = { release_dataset_id: 'candidate' };
+    else if (path.endsWith('/approval')) {
+      if (options.method === 'POST') { approval.state = body.decision; approval.latest_approval = { id: 'approval-1', decision: body.decision, approved_opportunity_ids: '[]' }; }
+      result = approval;
+    } else if (path.endsWith('/release-snapshots')) result = { dataset_id: 'release' };
+    else if (path === '/api/report-bundles') {
+      if (options.method === 'POST') { report = { id: 'rpt_ui', name: body.name, revision: 1, status: 'draft' }; result = { report_id: report.id, revision: 1 }; }
+      else result = report ? [{ ...report, report_id: report.id }] : [];
+    } else if (path.endsWith('/publish')) { report.status = body.status; result = {}; }
+    else if (path.endsWith('/access')) result = [];
+    else if (path.startsWith('/api/report-bundles/')) result = { report };
+    else throw new Error('Unexpected workflow API: ' + path);
+    return { ok: true, status: 200, json: async () => structuredClone(result) };
+  };
+  const context = dom.getInternalVMContext();
+  const apiModule = new vm.SourceTextModule(await fs.readFile(new URL('../static/api.js', import.meta.url), 'utf8'), { context });
+  const module = new vm.SourceTextModule(await fs.readFile(new URL('../static/marketing.js', import.meta.url), 'utf8'), { context });
+  await module.link(() => apiModule); await module.evaluate();
+  const idle = async () => { for (let i = 0; i < 200; i++) { if (!w.document.querySelector('[aria-busy="true"]')) return; await new Promise(r => setTimeout(r, 5)); } throw new Error('Workflow remained busy'); };
+  await idle();
+  const $ = selector => w.document.querySelector(selector);
+  const open = async id => { $('#snapshot-id').value = id; $('#resume-form').requestSubmit(); await idle(); };
+  const click = async selector => { $(selector).click(); await idle(); };
+  return { w, $, calls, idle, open, click, close: () => w.close() };
+}
+
+test('Marketing UI shows missing values, escapes labels and never calls provider APIs', async () => {
+  const h = await marketingHarness(); try {
+    await h.open('origin');
+    assert.match(h.$('#snapshot-preview').textContent, /Chưa có dữ liệu/);
+    assert.equal(h.$('#snapshot-preview img'), null);
+    assert.equal(h.$('#create-candidate').disabled, true);
+    assert.ok(h.calls.every(call => !call.path.includes('/google') && !call.path.includes('/analyses')));
+  } finally { h.close(); }
+});
+
+test('Marketing UI cannot approve or publish a source without adapter verification', async () => {
+  const h = await marketingHarness(); try {
+    await h.open('candidate');
+    assert.equal(h.$('#approve-release').disabled, true);
+    assert.equal(h.$('#create-release').disabled, true);
+    assert.equal(h.$('#publish-final').disabled, true);
+    assert.match(h.$('#source-state').textContent, /Thiếu bằng chứng từ adapter/);
+    assert.equal(h.$('#internal-preview').href, 'http://localhost:8080/internal-preview/candidate');
+    assert.equal(h.$('#published-link').hidden, true);
+  } finally { h.close(); }
+});
+
+test('Marketing UI sends hashes, keeps publication explicit and pins viewer revision', async () => {
+  const h = await marketingHarness({ confirmed: true }); try {
+    await h.open('origin');
+    h.$('#review-note').value = 'Review fixture evidence';
+    await h.click('#approve-internal');
+    assert.equal(h.calls.find(call => call.path.endsWith('/review') && call.method === 'POST').body.expected_sha256, 'hash-origin');
+    await h.click('#create-candidate');
+    h.$('#release-note').value = 'Review release fixture evidence';
+    await h.click('#approve-release');
+    const decision = h.calls.find(call => call.path.endsWith('/approval') && call.method === 'POST');
+    assert.deepEqual(decision.body.approved_opportunity_ids, []);
+    assert.equal(decision.body.expected_candidate_sha256, 'hash-candidate');
+    assert.equal(decision.headers['X-CSRF-Token'], 'fixture-csrf');
+    await h.click('#create-release');
+    h.$('#report-name').value = 'Isolated UI report';
+    await h.click('#create-bundle');
+    assert.ok(!h.calls.some(call => call.path.endsWith('/publish')));
+    await h.click('#publish-final');
+    assert.equal(h.$('#published-link').href, 'http://localhost:8080/reports/rpt_ui?revision=1');
+    assert.equal(h.$('#publish-final').disabled, true);
+    h.$('#viewer').value = 'viewer';
+    await h.click('#grant-access');
+    const grant = h.calls.find(call => call.path.endsWith('/access') && call.method === 'POST');
+    assert.deepEqual(grant.body, { user_id: 'viewer', min_revision: 1, max_revision: 1, active: true });
+  } finally { h.close(); }
+});
+
+test('Marketing UI stops loading internal data for a Viewer session', async () => {
+  const h = await marketingHarness({ role: 'viewer' }); try {
+    assert.equal(h.calls.length, 1);
+    assert.equal(h.$('#workflow-message').dataset.error, 'true');
+    assert.equal(h.$('#approve-release').disabled, true);
+  } finally { h.close(); }
+});
+
 const html = await fs.readFile(new URL('../templates/index.html', import.meta.url), 'utf8');
 const source = {};
 for (const file of ['api.js', 'ui.js', 'views.js', 'app.js']) source[file] = await fs.readFile(new URL('../static/' + file, import.meta.url), 'utf8');
@@ -153,7 +259,8 @@ test('Login uses application credentials, keeps Google separate, and exposes nav
     for (const route of ['#analysis', '#connections', '#activity', '#uploads', '#reports']) {
       assert.ok(h.document.querySelector(`.overview-page a[href="${route}"]`), `missing overview link ${route}`);
     }
-    assert.equal(h.document.querySelectorAll('.nav-link').length, 13);
+    assert.equal(h.document.querySelectorAll('.nav-link').length, 14);
+    assert.ok(h.document.querySelector('a[href="/marketing"]'));
     assert.equal(h.w.localStorage.length, 0);
     h.document.querySelector('[data-action="check-google"]').click();
     await h.until(() => h.requests.some(r => r.path === '/api/google/check'));
@@ -413,7 +520,7 @@ test('GMB analysis retains upload selection and submits through the existing ana
 
 test('Primary navigation is complete and provider routes remain reachable without permanent subnavigation', async () => {
   const h = await harness(); try {
-    const expectedRoutes = ['overview', 'clients', 'connections', 'assets', 'sync', 'analysis', 'datasets', 'report-builder', 'reports', 'activity', 'schedules', 'users', 'settings'];
+    const expectedRoutes = ['overview', 'clients', 'connections', 'assets', 'sync', 'analysis', 'datasets', 'report-builder', 'marketing', 'reports', 'activity', 'schedules', 'users', 'settings'];
     assert.deepEqual(Array.from(h.document.querySelectorAll('#sidebar .nav-link'), link => link.getAttribute('href').slice(1)), expectedRoutes);
     assert.equal(h.document.querySelectorAll('#sidebar .nav-sub-link').length, 0);
     for (const page of ['reports', 'connections', 'activity', 'schedules', 'users', 'settings']) {
@@ -435,6 +542,7 @@ test('Primary navigation is complete and provider routes remain reachable withou
     assert.equal(viewer.document.querySelector('.nav-link[href="#assets"]'), null);
     assert.equal(viewer.document.querySelector('.nav-link[href="#users"]'), null);
     assert.equal(viewer.document.querySelector('.nav-link[href="#report-builder"]'), null);
+    assert.equal(viewer.document.querySelector('.nav-link[href="/marketing"]'), null);
     viewer.w.location.hash = 'users'; await viewer.until(() => viewer.document.body.textContent.includes('Màn hình này chỉ dành cho quản trị viên.'));
     assert.equal(viewer.requests.some(r => r.path === '/api/users'), false);
   } finally { viewer.close(); }
