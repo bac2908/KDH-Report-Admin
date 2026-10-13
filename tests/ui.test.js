@@ -70,7 +70,7 @@ test('Marketing UI cannot approve or publish a source without adapter verificati
     assert.equal(h.$('#create-release').disabled, true);
     assert.equal(h.$('#publish-final').disabled, true);
     assert.match(h.$('#source-state').textContent, /Thiếu bằng chứng từ adapter/);
-    assert.equal(h.$('#internal-preview').href, 'http://localhost:8080/internal-preview/candidate');
+    assert.equal(h.$('#internal-preview').href, 'http://localhost:8080/auth/handoff/start?mode=preview&target_id=candidate');
     assert.equal(h.$('#published-link').hidden, true);
   } finally { h.close(); }
 });
@@ -93,7 +93,7 @@ test('Marketing UI sends hashes, keeps publication explicit and pins viewer revi
     await h.click('#create-bundle');
     assert.ok(!h.calls.some(call => call.path.endsWith('/publish')));
     await h.click('#publish-final');
-    assert.equal(h.$('#published-link').href, 'http://localhost:8080/reports/rpt_ui?revision=1');
+    assert.equal(h.$('#published-link').href, 'http://localhost:8080/auth/handoff/start?mode=published&target_id=rpt_ui&revision=1');
     assert.equal(h.$('#publish-final').disabled, true);
     h.$('#viewer').value = 'viewer';
     await h.click('#grant-access');
@@ -112,7 +112,7 @@ test('Marketing UI stops loading internal data for a Viewer session', async () =
 
 const html = await fs.readFile(new URL('../templates/index.html', import.meta.url), 'utf8');
 const source = {};
-for (const file of ['api.js', 'ui.js', 'views.js', 'app.js']) source[file] = await fs.readFile(new URL('../static/' + file, import.meta.url), 'utf8');
+for (const file of ['api.js', 'ui.js', 'views.js', 'meta_reporting_ui.js', 'app.js']) source[file] = await fs.readFile(new URL('../static/' + file, import.meta.url), 'utf8');
 const types = [{ id: 'seo', label: 'Website Traffic & SEO', can_generate: true }, { id: 'ga4', label: 'Google Analytics 4', can_generate: true }, { id: 'gmb', label: 'Google Business Profile', can_generate: true }];
 const admin = { id: 'admin', name: 'Admin kiểm thử', email: 'admin@example.test', role: 'admin', allowed: types.map(t => t.id), active: 1 };
 const overview = { reports: [], report_count: 0, jobs: [], running: 0, failed: 0, sources: {}, google_connected: false, types, last_export: null, dashboard_url: 'http://localhost:8088', organization: { name: 'KinderHealth', author: '' } };
@@ -178,6 +178,7 @@ async function harness({ signedIn = true, role = 'admin', dataset = null, demo =
       if (metaReadError) { status = metaReadError.status; result = { error: metaReadError.message }; }
       else result = metaStatus;
     }
+    else if (path === '/api/meta/reporting/assets') result = { selected: [], discovered: {} };
     else if (path === '/api/google' && options.method === 'DELETE') { providerConnected = false; result = { message: 'Đã ngắt kết nối Google.' }; }
     else if (path === '/api/google') result = { configured: googleConfigured, connected: providerConnected, email: providerConnected ? 'connected@example.test' : null, connected_at: providerConnected ? '2026-09-01T00:00:00Z' : null, checked_at: null, sources: googleSources, assets: { ga4: 'property-config', gsc: 'property-url', keywords: 'sheet-config' } };
     else if (path === '/api/jobs') result = jobs;
@@ -829,7 +830,7 @@ test('Meta connection shows persisted identity and revokes through its own API o
     await h.until(() => !h.document.querySelector('[data-action="disconnect-meta"]'));
     assert.match(h.document.querySelector('#toasts').textContent, /Meta chưa xác nhận thu hồi/);
     assert.match(h.document.querySelector('.connection-meta').textContent, /Chưa kết nối/);
-    assert.deepEqual(h.requests.slice(before).map(r => [r.method, r.path]), [['GET', '/api/meta'], ['DELETE', '/api/meta'], ['GET', '/api/meta']]);
+    assert.deepEqual(h.requests.slice(before).map(r => [r.method, r.path]), [['GET', '/api/meta'], ['GET', '/api/meta/reporting/assets'], ['DELETE', '/api/meta'], ['GET', '/api/meta']]);
     assert.deepEqual(h.errors, []);
   } finally { h.close(); }
 });

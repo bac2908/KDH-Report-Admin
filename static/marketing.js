@@ -4,7 +4,7 @@ const root = document.querySelector('#marketing-console');
 const $ = selector => root.querySelector(selector);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const valueText = value => value == null ? 'Chưa có dữ liệu' : typeof value === 'number' ? value.toLocaleString('vi-VN', { maximumFractionDigits: 4 }) : String(value);
-const state = { meta: null, data: null, review: null, candidate: null, approval: null, release: null, report: null, busy: false };
+const state = { meta: null, data: null, review: null, candidate: null, approval: null, release: null, report: null, reports: [], busy: false };
 const statusNames = { approved_internal: 'Đã duyệt nội bộ', needs_changes: 'Cần chỉnh sửa', awaiting_review: 'Chờ duyệt', needs_data: 'Thiếu dữ liệu', release_approved: 'Đã duyệt phát hành', release_blocked: 'Đang chặn phát hành', release_review: 'Chờ duyệt phát hành', provider_origin_confirmed: 'Đã xác nhận qua adapter', lineage_consistent: 'Truy vết khớp, chưa xác nhận nguồn', draft: 'Bản nháp', provisional: 'Đã xuất bản tạm thời', final: 'Đã xuất bản chính thức' };
 const issueNames = { permission_denied: 'Chưa được cấp quyền nguồn', not_configured: 'Kết nối chưa sẵn sàng', no_data: 'Chưa có dữ liệu', partial: 'Chưa đủ kỳ dữ liệu', stale: 'Có lần đồng bộ mới hơn; cần tạo Dataset mới', provider_origin_unconfirmed: 'Thiếu bằng chứng từ adapter; cần đồng bộ lại bằng kết nối thật', source_snapshot_missing: 'Thiếu snapshot nguồn', sync_failed: 'Đồng bộ thất bại', demo_data: 'Dữ liệu demo không được dùng cho phát hành thật', candidate_changed: 'Bản chờ duyệt đã bị thay đổi', origin_dataset_changed: 'Dataset gốc đã thay đổi', review_superseded: 'Có quyết định duyệt mới hơn' };
 const label = value => statusNames[value] || value;
@@ -52,7 +52,7 @@ function renderState() {
     $('#block-release').disabled = !state.candidate;
     $('#create-release').disabled = !checks?.provider_origin_confirmed || decision?.decision !== 'release_approved';
     $('#source-state').innerHTML = checks ? `<p>${esc(label(state.approval.state))} · ${esc(label(checks.state))}</p>${issueList(checks.issues)}<div class="workflow-table"><table><thead><tr><th>KPI</th><th>Kiểm tra</th></tr></thead><tbody>${checks.checks.map(item => `<tr><td>${esc(item.metric_id)}</td><td>${esc(label(item.status))}${issueList(item.issues)}</td></tr>`).join('')}</tbody></table></div>` : 'Chưa có bản chờ duyệt phát hành.';
-    setLink('#internal-preview', state.candidate ? '/internal-preview/' + state.candidate : null);
+    setLink('#internal-preview', state.candidate ? '/auth/handoff/start?mode=preview&target_id=' + state.candidate : null);
     const report = state.report;
     $('#create-bundle').disabled = !state.release;
     $('#publish-provisional').disabled = !report || report.status !== 'draft';
@@ -60,7 +60,8 @@ function renderState() {
     $('#grant-access').disabled = !report;
     $('#revoke-access').disabled = !report;
     $('#publication-state').innerHTML = report ? `<p>${esc(report.name)} · revision ${report.revision} · ${esc(label(report.status))}</p><p class="workflow-id">${esc(report.id)}</p>` : state.release ? `<p>Snapshot đã sẵn sàng tạo Report Bundle.</p><p class="workflow-id">${esc(state.release.id)}</p>` : 'Chưa có snapshot phát hành.';
-    setLink('#published-link', report && report.status !== 'draft' ? `/reports/${report.id}?revision=${report.revision}` : null);
+    setLink('#published-link', report && report.status !== 'draft' ? `/auth/handoff/start?mode=published&target_id=${report.id}&revision=${report.revision}` : null);
+    $('#published-link').title = report?.status === 'draft' ? 'Báo cáo còn là bản nháp. Cần hoàn tất kiểm tra và xuất bản revision này.' : 'Mở đúng dashboard bằng phiên Admin hiện tại';
 }
 
 function preview(data) {
@@ -77,10 +78,12 @@ function preview(data) {
 async function refresh() {
     const [meta, reports, users] = await Promise.all([api('/marketing/workflow'), api('/report-bundles'), api('/users')]);
     state.meta = meta;
+    state.reports = reports;
     const selected = $('#snapshot-id').value;
     $('#snapshot-id').innerHTML = '<option value="">Chọn snapshot đã lưu</option>' + meta.snapshots.map(item => `<option value="${esc(item.id)}">${esc(item.source)} · ${esc(item.start)} → ${esc(item.end)} · ${esc(item.kind.replace('marketing_', '').replace('_v1', ''))} · ${esc(item.id.slice(0, 8))}</option>`).join('');
     $('#snapshot-id').value = selected;
     $('#existing-report').innerHTML = '<option value="">Chọn báo cáo</option>' + reports.map(item => `<option value="${esc(item.report_id)}:${item.revision}">${esc(item.name)} · r${item.revision} · ${esc(label(item.status))}</option>`).join('');
+    selectedReportLink();
     $('#viewer').innerHTML = '<option value="">Chọn tài khoản</option>' + users.filter(user => user.active).map(user => `<option value="${esc(user.id)}">${esc(user.name)} (${esc(user.email)})</option>`).join('');
     if (!$('#source').options.length) $('#source').innerHTML = meta.sources.map(item => `<option value="${esc(item.id)}">${esc(item.label)}</option>`).join('');
     $('#asset').innerHTML = '<option value="">Tự chọn nếu chỉ có một tài sản phù hợp</option>' + meta.assets.map(item => `<option value="${esc(item.id)}">${esc(item.name)} · ${esc(item.asset_type)}</option>`).join('');
@@ -129,6 +132,13 @@ submit('#dataset-form', async data => {
 });
 submit('#resume-form', () => loadSnapshot($('#snapshot-id').value));
 submit('#report-resume-form', () => { const [id, revision] = $('#existing-report').value.split(':'); return loadReport(id, revision); });
+function selectedReportLink() {
+    const selected = state.reports.find(report => `${report.report_id}:${report.revision}` === $('#existing-report').value);
+    const published = selected && ['provisional', 'final'].includes(selected.status);
+    setLink('#selected-report-open', published ? `/auth/handoff/start?mode=published&target_id=${selected.report_id}&revision=${selected.revision}` : null);
+    $('#selected-report-hint').textContent = !selected ? 'Chọn report và revision để mở dashboard.' : published ? 'Mở dashboard bằng phiên Admin hiện tại.' : 'Revision còn là bản nháp. Cần hoàn tất kiểm tra và xuất bản; dùng Xem cấu hình để xem trước nội bộ.';
+}
+$('#existing-report').addEventListener('change', selectedReportLink);
 submit('#review-form', async (data, decision) => {
     const id = state.review.dataset_id;
     await api(`/marketing/datasets/${id}/review`, 'POST', { decision, note: data.get('note'), expected_sha256: state.review.dataset_sha256 });

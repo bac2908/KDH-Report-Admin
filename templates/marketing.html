@@ -10,7 +10,7 @@
 <div id="workflow-message" role="status" aria-live="polite">Đang tải quy trình…</div>
 <section class="card workflow-resume"><h2>Tiếp tục công việc đã lưu</h2>
 <form id="resume-form"><label for="snapshot-id">Dataset / bản chờ duyệt / bản phát hành</label><div class="workflow-row"><select id="snapshot-id" required><option value="">Chưa tải danh sách</option></select><button class="btn secondary">Mở</button><button class="btn secondary" type="button" id="refresh-workflow">Làm mới</button></div></form>
-<form id="report-resume-form"><label for="existing-report">Report Bundle và revision đã lưu</label><div class="workflow-row"><select id="existing-report" required><option value="">Chưa tải danh sách</option></select><button class="btn secondary">Mở báo cáo</button></div></form></section>
+<form id="report-resume-form"><label for="existing-report">Report Bundle và revision đã lưu</label><div class="workflow-row"><select id="existing-report" required><option value="">Chưa tải danh sách</option></select><button class="btn secondary">Xem cấu hình</button><a id="selected-report-open" class="btn primary" hidden>Mở báo cáo ↗</a></div><p id="selected-report-hint" class="form-note">Chọn report và revision để mở dashboard.</p></form></section>
 <div class="workflow-columns"><section class="card"><h2>1. Chụp dữ liệu để duyệt</h2>
 <p>Đọc dữ liệu đã đồng bộ. Cần đồng bộ lại nguồn thì vào <a href="/#sync">Đồng bộ dữ liệu</a> trước.</p>
 <form id="dataset-form"><label for="source">Nguồn dữ liệu</label><select id="source" name="source" required></select>
@@ -30,7 +30,7 @@
 <button id="create-release" class="btn primary" disabled>Tạo snapshot phát hành</button></section>
 <section class="card"><h2>4. Xuất bản & cấp quyền xem</h2><div id="publication-state">Chưa có snapshot phát hành.</div>
 <form id="bundle-form"><label for="report-name">Tên báo cáo</label><input id="report-name" name="name" maxlength="160" required placeholder="Báo cáo KinderHealth – kỳ báo cáo"><button id="create-bundle" class="btn secondary" disabled>Tạo bản nháp Report Bundle</button></form>
-<div class="workflow-row"><button id="publish-provisional" class="btn secondary" disabled>Xuất bản tạm thời</button><button id="publish-final" class="btn primary" disabled>Xuất bản chính thức</button><a id="published-link" hidden target="_blank" rel="noopener noreferrer">Mở đúng revision trên New ↗</a></div>
+<div class="workflow-row"><button id="publish-provisional" class="btn secondary" disabled>Xuất bản tạm thời</button><button id="publish-final" class="btn primary" disabled>Xuất bản chính thức</button><a id="published-link" hidden target="_blank" rel="noopener noreferrer">Mở báo cáo · đúng revision trên New ↗</a></div>
 <p>Muốn ghép nhiều nguồn/section, dùng <a href="/#report-builder">Report Builder</a> với các snapshot phát hành đã duyệt.</p>
 <form id="access-form"><label for="viewer">Tài khoản nhận quyền xem báo cáo đang mở</label><select id="viewer" required></select>
 <div class="workflow-row"><div><label for="min-revision">Từ revision</label><input id="min-revision" type="number" min="1" value="1" required></div><div><label for="max-revision">Đến revision (trống: bao gồm các bản sau)</label><input id="max-revision" type="number" min="1"></div></div>

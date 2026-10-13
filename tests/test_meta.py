@@ -345,7 +345,9 @@ class MetaCases:
 
 class SQLiteMetaTest(MetaCases, unittest.TestCase):
     def setUp(self):
-        test_app.AppTest.setUp(self)
+        # A developer's optional Meta sandbox must not change this OAuth fixture.
+        with patch.dict(os.environ, {'META_CLIENT_ID': 'client_kinderhealth'}):
+            test_app.AppTest.setUp(self)
         self.prepare()
 
     tearDown = test_app.AppTest.tearDown
@@ -354,6 +356,7 @@ class SQLiteMetaTest(MetaCases, unittest.TestCase):
 @unittest.skipUnless(os.getenv('TEST_DATABASE_URL'), 'Set TEST_DATABASE_URL to an isolated PostgreSQL test database')
 class PostgresMetaTest(MetaCases, unittest.TestCase):
     def setUp(self):
-        test_postgres.PostgresTest.setUp(self)
+        with patch.dict(os.environ, {'META_CLIENT_ID': 'client_kinderhealth'}):
+            test_postgres.PostgresTest.setUp(self)
         self.app, self.client = self.apps[0], self.clients[0]
         self.prepare()

@@ -285,6 +285,40 @@ CREATE TABLE IF NOT EXISTS report_viewer_grants (
 );
 """,
     ),
+    (
+        8,
+        "viewer_handoff",
+        """
+CREATE TABLE IF NOT EXISTS viewer_handoffs (
+    id TEXT PRIMARY KEY,
+    state TEXT NOT NULL,
+    challenge TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    callback TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    user_id TEXT,
+    source_session_id TEXT,
+    code_hash TEXT UNIQUE,
+    code_expires_at TEXT,
+    redeemed INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS delegated_viewer_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source_session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    client_id TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    mode TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);
+""",
+    ),
 ]
 
 

@@ -1,5 +1,14 @@
 # KDH Report — bối cảnh toàn hệ thống
 
+## Tiếp nối 13/10/2026 — Admin → New và dashboard Bundle
+
+Đã bổ sung handoff một lần có state/PKCE và phiên Viewer theo report/revision,
+migration 8; New gắn Bundle vào sáu template dashboard hiện có. Xem
+[ADMIN_NEW_HANDOFF.md](ADMIN_NEW_HANDOFF.md) để biết cấu hình, chính sách thu hồi,
+kiểm thử, ảnh và giới hạn. Chỉ build/kiểm tra môi trường tách biệt; chưa nâng cấp
+container runtime hoặc thay `.env`. Working tree có thêm thay đổi Meta ngoài phạm
+vi handoff; giữ nguyên khi tiếp tục. Đường dẫn hiện tại ở `D:\KDH-Report-All\`.
+
 ## Cập nhật tiếp nối 10/10/2026 — đọc trước các mốc lịch sử bên dưới
 
 Trạng thái code local hiện tại đã đi xa hơn các mục 5–9 viết ngày 07–08/10. Xem [KDH_HANDOVER.md](KDH_HANDOVER.md) và [audit Marketing](marketing-remaining-implementation.md) để tiếp tục đúng việc.

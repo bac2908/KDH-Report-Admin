@@ -19,11 +19,41 @@ def service_identity(app):
 
 def viewer_identity(db):
     opaque = request.headers.get('X-KDH-Viewer-Session', '')
+    delegated = db.execute('''SELECT u.*,s.id AS session_id,d.id AS delegated_id,
+        d.client_id AS scope_client,d.target_id AS scope_target,d.revision AS scope_revision,d.mode AS scope_mode
+        FROM delegated_viewer_sessions d JOIN users u ON u.id=d.user_id
+        JOIN sessions s ON s.id=d.source_session_id AND s.user_id=d.user_id
+        WHERE d.id=? AND d.expires_at>? AND s.expires_at>? AND u.active=1''',
+        (digest(opaque), now(), now())).fetchone()
+    if delegated:
+        return dict(delegated)
     row = db.execute('''SELECT u.*,s.id AS session_id FROM users u JOIN sessions s ON s.user_id=u.id
         WHERE s.id=? AND s.expires_at>? AND u.active=1''', (digest(opaque), now())).fetchone()
     if not row:
         raise Problem('Phiên người xem hết hạn hoặc đã bị thu hồi.', 401, 'viewer_unauthorized')
     return dict(row)
+
+
+def authorized_bundle(store, db, user, report_id, revision):
+    row = (get_latest_revision(store, report_id, True, db=db) if revision is None
+           else get_revision(store, report_id, revision, True, db=db))
+    if user.get('delegated_id') and (user['scope_mode'] != 'published' or user['scope_target'] != report_id
+            or user['scope_revision'] != row['revision'] or user['scope_client'] != row['client_id']):
+        raise Problem('Báo cáo không nằm trong phiên đã chuyển.', 404, 'report_not_found')
+    admin_access = user['role'] == 'admin' and row['client_id'] == DEFAULT_CLIENT_ID
+    grant = db.execute('''SELECT * FROM report_viewer_grants
+        WHERE report_id=? AND client_id=? AND user_id=? AND active=1
+        AND min_revision<=? AND (max_revision IS NULL OR max_revision>=?)''',
+        (report_id, row['client_id'], user['id'], row['revision'], row['revision'])).fetchone()
+    if not admin_access and not grant:
+        raise Problem('Báo cáo không nằm trong phạm vi được cấp.', 404, 'report_not_found')
+    payload = _payload(row)
+    if payload.get('client', {}).get('id') != row['client_id']:
+        raise Problem('Phạm vi khách hàng của snapshot không hợp lệ.', 409)
+    if not admin_access and any(not allowed(user, item['report_type']) for item in payload['sections'].values()):
+        raise Problem('Báo cáo không nằm trong quyền xem được cấp.', 404, 'report_not_found')
+    _guard_marketing_snapshot(payload, store)
+    return payload
 
 
 def register_viewer_routes(app, store, require, body):
@@ -76,7 +106,10 @@ def register_viewer_routes(app, store, require, body):
         service_identity(app)
         with store.connect(immediate=True) as db:
             user = viewer_identity(db)
-            db.execute('DELETE FROM sessions WHERE id=?', (user['session_id'],))
+            if user.get('delegated_id'):
+                db.execute('DELETE FROM delegated_viewer_sessions WHERE id=?', (user['delegated_id'],))
+            else:
+                db.execute('DELETE FROM sessions WHERE id=?', (user['session_id'],))
         return jsonify(logged_out=True)
 
     @app.get('/api/internal/v1/viewer/report-bundles/<report_id>')
@@ -85,21 +118,7 @@ def register_viewer_routes(app, store, require, body):
         revision = _revision_arg()
         with store.connect(immediate=True) as db:
             user = viewer_identity(db)
-            row = (get_latest_revision(store, report_id, True, db=db) if revision is None
-                   else get_revision(store, report_id, revision, True, db=db))
-            admin_access = user['role'] == 'admin' and row['client_id'] == DEFAULT_CLIENT_ID
-            grant = db.execute('''SELECT * FROM report_viewer_grants
-                WHERE report_id=? AND client_id=? AND user_id=? AND active=1
-                AND min_revision<=? AND (max_revision IS NULL OR max_revision>=?)''',
-                (report_id, row['client_id'], user['id'], row['revision'], row['revision'])).fetchone()
-            if not admin_access and not grant:
-                raise Problem('Báo cáo không nằm trong phạm vi được cấp.', 404, 'report_not_found')
-            payload = _payload(row)
-            if payload.get('client', {}).get('id') != row['client_id']:
-                raise Problem('Phạm vi khách hàng của snapshot không hợp lệ.', 409)
-            if not admin_access and any(not allowed(user, item['report_type']) for item in payload['sections'].values()):
-                raise Problem('Báo cáo không nằm trong quyền xem được cấp.', 404, 'report_not_found')
-            _guard_marketing_snapshot(payload, store)
+            payload = authorized_bundle(store, db, user, report_id, revision)
         return jsonify(payload)
 
     @app.get('/api/internal/v1/viewer/report-bundles')
@@ -110,6 +129,9 @@ def register_viewer_routes(app, store, require, body):
             rows = db.execute("SELECT * FROM report_bundles WHERE status IN ('provisional','final') ORDER BY bundle_key,revision DESC").fetchall()
             reports, selected = [], set()
             for row in rows:
+                if user.get('delegated_id') and (user['scope_mode'] != 'published'
+                        or row['bundle_key'] != user['scope_target'] or row['revision'] != user['scope_revision']):
+                    continue
                 if row['bundle_key'] in selected:
                     continue
                 grant = db.execute('''SELECT 1 FROM report_viewer_grants WHERE report_id=? AND client_id=?
@@ -137,6 +159,8 @@ def register_viewer_routes(app, store, require, body):
         service_identity(app)
         with store.connect(immediate=True) as db:
             user = viewer_identity(db)
+            if user.get('delegated_id') and (user['scope_mode'] != 'preview' or user['scope_target'] != candidate_id):
+                raise Problem('Bản xem trước không nằm trong phiên đã chuyển.', 403)
             _admin(db, user['id'], user['session_id'])
             from .marketing_source_check import candidate_state
             _, candidate, _, _, _, issues = candidate_state(store, db, candidate_id)

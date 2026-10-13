@@ -31,3 +31,133 @@ export function chart(rows, key, color, start, end) {
  const segments=[];let segment=[];for(const r of values){if(segment.length&&Date.parse(r.date)-Date.parse(segment.at(-1).date)>86400000){segments.push(segment);segment=[];}segment.push(r);}if(segment.length)segments.push(segment);
  return `<svg class="chart ${color}" viewBox="0 0 ${w} ${h+18}" role="img" aria-label="Biểu đồ ${esc(key)} theo ngày"><line x1="40" y1="${h-25}" x2="610" y2="${h-25}" class="grid-line"/><line x1="40" y1="20" x2="610" y2="20" class="grid-line"/><text x="4" y="24">${num(max)}</text><text x="15" y="${h-22}">0</text>${segments.map(s=>`<polyline points="${s.map(r=>`${x(r)},${y(r)}`).join(' ')}"/>`).join('')}${values.map(r=>`<circle cx="${x(r)}" cy="${y(r)}" r="3"><title>${date(r.date)}: ${num(r[key])}</title></circle>`).join('')}<text x="40" y="${h+8}">${date(start)}</text><text x="610" text-anchor="end" y="${h+8}">${date(end)}</text></svg>`;
 }
+
+export function barChart(rows, key, start, end) {
+    if (!Array.isArray(rows) || !rows.length) {
+        return empty('Chưa có dữ liệu theo ngày');
+    }
+
+    const first = Date.parse(start + 'T00:00:00Z');
+    const last = Date.parse(end + 'T00:00:00Z');
+
+    if (!Number.isFinite(first) ||
+        !Number.isFinite(last) ||
+        first > last) {
+        return empty('Khoảng ngày không hợp lệ');
+    }
+
+    const values = rows.filter(row =>
+        /^\d{4}-\d{2}-\d{2}$/.test(row.date || '') &&
+        Number.isFinite(row[key]) &&
+        row[key] >= 0
+    ).filter(row => {
+        const day = Date.parse(row.date + 'T00:00:00Z');
+        return Number.isFinite(day) && day >= first && day <= last;
+    });
+
+    if (!values.length) {
+        return empty('Chưa có dữ liệu hợp lệ');
+    }
+
+    const width = 640;
+    const left = 45;
+    const plotWidth = 570;
+    const top = 24;
+    const bottom = 158;
+    const plotHeight = bottom - top;
+
+    const days = Math.round(
+        (last - first) / 86400000
+    ) + 1;
+
+    const slot = plotWidth / days;
+    const barWidth = Math.max(1, Math.min(34, slot * 0.65));
+
+    const maximum = Math.max(
+        1,
+        ...values.map(row => row[key])
+    );
+
+    const bars = values.map(row => {
+        const day = Date.parse(
+            row.date + 'T00:00:00Z'
+        );
+
+        const index = Math.round(
+            (day - first) / 86400000
+        );
+
+        const x = left + (index + 0.5) * slot;
+        const height = row[key] / maximum * plotHeight;
+        const y = bottom - height;
+
+        return `
+            <rect
+                x="${x - barWidth / 2}"
+                y="${y}"
+                width="${barWidth}"
+                height="${height}"
+                rx="3"
+                fill="#d97706"
+            >
+                <title>
+                    ${esc(row.date)}: ${num(row[key])} bài đăng
+                </title>
+            </rect>
+
+            ${days <= 14 ? `
+                <text
+                    x="${x}"
+                    y="${Math.max(16, y - 6)}"
+                    text-anchor="middle"
+                >
+                    ${num(row[key])}
+                </text>
+            ` : ''}
+        `;
+    }).join('');
+
+    return `
+        <svg
+            class="chart facebook-content-bars"
+            viewBox="0 0 ${width} 200"
+            role="img"
+            aria-label="Biểu đồ cột số bài đăng Facebook theo ngày"
+        >
+            <line
+                x1="${left}" y1="${top}"
+                x2="${left + plotWidth}" y2="${top}"
+                class="grid-line"
+            />
+
+            <line
+                x1="${left}" y1="${bottom}"
+                x2="${left + plotWidth}" y2="${bottom}"
+                class="grid-line"
+            />
+
+            <text x="5" y="${top + 4}">
+                ${num(maximum)}
+            </text>
+
+            <text x="20" y="${bottom}">
+                0
+            </text>
+
+            ${bars}
+
+            <text x="${left}" y="190">
+                ${date(start)}
+            </text>
+
+            <text
+                x="${left + plotWidth}"
+                y="190"
+                text-anchor="end"
+            >
+                ${date(end)}
+            </text>
+        </svg>
+    `;
+}
+

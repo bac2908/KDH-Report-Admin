@@ -219,6 +219,10 @@ def load_config():
 
         ),
 
+        'META_CLIENT_ID': os.getenv(
+           'META_CLIENT_ID',
+           'client_kinderhealth'
+        ).strip(),
         'META_APP_ID': os.getenv('META_APP_ID', '').strip(),
         'META_APP_SECRET': os.getenv('META_APP_SECRET', '').strip(),
         'META_CONFIG_ID': os.getenv('META_CONFIG_ID', '').strip(),

@@ -66,6 +66,8 @@ services:
       # ---------------------------------------------------------
       # META / FACEBOOK
       # ---------------------------------------------------------
+      META_CLIENT_ID: ${META_CLIENT_ID:-client_kinderhealth}
+      META_REPORTING_ALLOW_PRIMARY_CLIENT: ${META_REPORTING_ALLOW_PRIMARY_CLIENT:-0}
       META_APP_ID: ${META_APP_ID:-}
       META_APP_SECRET: ${META_APP_SECRET:-}
       META_CONFIG_ID: ${META_CONFIG_ID:-}

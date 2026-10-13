@@ -15,6 +15,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from .core import ROOT, TYPES, TZ, GOOD, Store, Problem, allowed, digest, filters, load_config, now, pack, public_user, uid
 from .google import Google, SourceError, LABELS
 from .meta import Meta
+from .meta_reporting_routes import register_meta_reporting_routes
 from .jobs import Worker, enqueue, job_view, next_run, period_dates
 from .reports import import_legacy, publish, save_report, save_upload, valid_dataset
 from .report_bundle_routes import register_report_bundle_routes
@@ -27,6 +28,7 @@ from .marketing_source_check import register_marketing_source_routes
 from .marketing_approval import register_marketing_approval_routes
 from .marketing_publication import register_marketing_publication_routes
 from .viewer_access import register_viewer_routes
+from .viewer_handoff import register_handoff_routes
 from .marketing_console import register_marketing_console
 
 def _bootstrap_initial_admin(store, email, password):
@@ -64,7 +66,7 @@ def create_app(overrides=None):
     google = Google(store, app.config)
     store.report_cipher = google.cipher
     meta = Meta(store, app.config, google.cipher)
-    worker = Worker(store, google)
+    worker = Worker(store, google, meta)
     app.extensions.update(store=store, google=google, meta=meta, worker=worker)
     dummy_hash = generate_password_hash(secrets.token_urlsafe(32))
 
@@ -675,5 +677,13 @@ def create_app(overrides=None):
     register_marketing_approval_routes(app, store, require, body)
     register_marketing_publication_routes(app, store, require, body)
     register_viewer_routes(app, store, require, body)
+    register_handoff_routes(app, store, body)
     register_marketing_console(app, store, require)
+    register_meta_reporting_routes(
+    app,
+    store,
+    require,
+    body,
+    meta,
+)
     return app

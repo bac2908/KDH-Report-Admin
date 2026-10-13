@@ -43,14 +43,18 @@ PREVIEW_METRICS = {
         "google_ads.clicks",
         "google_ads.conversions",
     ),
+
     "facebook_ads": (
         "facebook_ads.spend",
+        "facebook_ads.impressions",
+        "facebook_ads.clicks",
         "facebook_ads.leads",
-        "facebook_ads.cpl",
     ),
     "facebook_content": (
+        "facebook_content.posts_published",
         "facebook_content.engagements",
     ),
+
     "instagram": (
         "instagram.engagements",
     ),

@@ -131,9 +131,10 @@ def period_dates(period, at=None):
 class Worker:
     """Durable queue, claimed atomically by the worker or an explicit request."""
 
-    def __init__(self, store, google):
+    def __init__(self, store, google,  meta=None):
         self.store = store
         self.google = google
+        self.meta = meta
         self.platform = PlatformData(store)
         self.stopping = threading.Event()
         self.thread = None
@@ -494,7 +495,15 @@ class Worker:
         token = REQUEST_DEADLINE.set(deadline)
 
         try:
-            self.perform(job)
+            if job['kind'] == 'meta_sync':
+              from .meta_reporting_worker import MetaReportingWorker
+
+              MetaReportingWorker(
+            self.store,
+            self.meta,
+        ).run(job)
+            else:
+              self.perform(job)
         except Problem as exc:
             self.store.execute(
                 """

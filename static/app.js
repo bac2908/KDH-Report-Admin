@@ -1,5 +1,26 @@
 import { api, setCsrf } from './api.js';
-import { esc, date, time, num, icon, badge, empty, button, notice, modal, toast, table, sourceNames, kindNames, roles } from './ui.js';
+import { metaReportingCard } from './meta_reporting_ui.js';
+
+import {
+    esc,
+    date,
+    time,
+    num,
+    icon,
+    badge,
+    empty,
+    button,
+    notice,
+    modal,
+    toast,
+    table,
+    chart,
+    barChart,
+    sourceNames,
+    kindNames,
+    roles
+} from './ui.js';
+
 import { pages, connectionPlatforms, loginView, shell, overviewView, clientsView, assetsView, syncView, connectionsView, platformConnectionsView, platformDetailView, analysisView, analysisResults, datasetsView, datasetsTable, datasetDetailView, datasetDetailNotFoundView, reportBuilderView, reportBuilderPeriodWarning, reportBuilderConfigValidation, reportBuilderSectionOptions, reportBuilderPreviewView, reportsView, activityView, uploadsView, usersView, settingsView, schedulesView, skeletonView, jobProgress, dataTable } from './views.js';
 
 const state = { user: null, overview: null, page: 'overview', generation: 0, authEpoch: 0, dataset: null, datasetDetail: null, datasetDetailTab: 'summary', datasets: [], reportBuilder: null, draft: null, job: null, tab: 'summary', tablePage: 0, uploads: [], reports: [], users: [], schedules: [], reportFilter: {}, jobFilter: '' };
@@ -123,7 +144,20 @@ async function navigate() {
         if (page === 'sync') { const sources = await Promise.all([read('/jobs'), state.user.role === 'admin' ? read('/google') : Promise.resolve(null)]); state.jobs = sources[0]; state.connection = sources[1]; html = syncView(state.jobs, state.overview, state.user, state.connection); }
         if (page === 'connections') {
             const platform = state.connectionPlatform;
-            if (platform === 'facebook') html = platformDetailView(platform, await read('/meta'));
+            if (platform === 'facebook') {
+                const status = await read('/meta');
+                html = platformDetailView(platform, status);
+
+                if (status.connected) {
+                    try {
+                        const assets = await read('/meta/reporting/assets');
+                        html += metaReportingCard(assets, period('last28'));
+                    } catch (err) {
+                        if (err.status === 401 || err.cancelled) throw err;
+                        html += notice('Chưa lấy được danh sách tài sản Meta: ' + err.message, 'amber');
+                    }
+                }
+            }
             else if (platform === 'tiktok') html = platformDetailView(platform);
             else {
                 const [google, meta] = await Promise.all([read('/google'), read('/meta')]);
@@ -402,6 +436,250 @@ async function act(action, el) {
         case 'forgot': modal('Khôi phục mật khẩu', `<p>Liên hệ quản trị viên để đặt lại mật khẩu tài khoản ứng dụng.</p><p class="muted">Nếu bạn là quản trị viên duy nhất, chạy trên máy chủ:</p><p class="code">.venv\Scripts\python.exe run.py reset-password --email EMAIL_CUA_BAN</p>`, button('Đóng', 'close-modal')); break;
         case 'logout': await api('/auth/logout', 'POST', {}); clearSessionData(); state.user = null; setCsrf(''); location.hash = ''; return start();
         case 'connect-google': { const r = await api('/google/connect', 'POST', {}); location.assign(r.url); break; }
+
+        case 'meta-select-asset': {
+            await api('/meta/reporting/assets', 'POST', {
+                source: el.dataset.source,
+                external_id: el.dataset.externalId,
+                enabled: el.dataset.enabled === 'true'
+            });
+
+            toast('Đã cập nhật lựa chọn tài sản Meta.');
+            await navigate();
+            break;
+        }
+
+        case 'meta-sync-asset': {
+            const start = $('#meta-sync-start')?.value;
+            const end = $('#meta-sync-end')?.value;
+
+            if (!start || !end || start > end) {
+                throw new Error('Chọn khoảng ngày Meta hợp lệ.');
+            }
+
+            const r = await api('/meta/reporting/sync', 'POST', {
+                asset_id: id,
+                start,
+                end
+            });
+
+            toast(
+                r.created
+                    ? 'Đã thêm tác vụ đồng bộ Meta.'
+                    : 'Tác vụ Meta đang có trong hàng đợi.'
+            );
+
+            const result = await waitJob(r.job_id);
+
+            toast(
+                result.status === 'succeeded'
+                    ? 'Đồng bộ Meta hoàn tất.'
+                    : (result.error || 'Không thể đồng bộ.'),
+                result.status !== 'succeeded'
+            );
+
+            if (state.page === 'connections') {
+                await navigate();
+            }
+
+            break;
+        }
+
+        case 'meta-asset-history': {
+            const rows = await api(
+                '/meta/reporting/syncs/' + encodeURIComponent(id)
+            );
+
+            const content = rows.length
+                ? rows.map(r => `
+                    <p>
+                        <strong>${esc(r.status)}</strong>
+                        · ${esc(r.requested_start)}
+                        → ${esc(r.requested_end)}
+                        · ${num(r.record_count)} dòng
+                        · ${esc(r.error_code || '')}
+                    </p>
+                `).join('')
+                : '<p>Chưa đồng bộ tài sản này.</p>';
+
+            modal(
+                'Lịch sử đồng bộ Meta',
+                content,
+                button('Đóng', 'close-modal')
+            );
+
+            break;
+        }
+
+                
+        case 'meta-view-kpis': {
+            const start = $('#meta-sync-start')?.value;
+            const end = $('#meta-sync-end')?.value;
+
+            if (!id || !start || !end || start > end) {
+                throw new Error(
+                    'Vui lòng chọn khoảng thời gian hợp lệ.'
+                );
+            }
+
+            // Gọi API KPI Facebook đã tạo ở backend
+            const query = new URLSearchParams({
+                start,
+                end
+            });
+
+            const data = await api(
+                '/meta/reporting/kpis/'
+                + encodeURIComponent(id)
+                + '?'
+                + query.toString()
+            );
+
+            const isAds = data.source === 'facebook_ads';
+
+            // Danh sách KPI cần hiển thị
+            const definitions = isAds
+                ? [
+                    ['facebook_ads.spend', 'Chi phí quảng cáo'],
+                    ['facebook_ads.impressions', 'Lượt hiển thị'],
+                    ['facebook_ads.clicks', 'Lượt nhấp'],
+                    ['facebook_ads.leads', 'Leads']
+                ]
+                : [
+                    [
+                        'facebook_content.posts_published',
+                        'Bài đăng mới'
+                    ],
+                    [
+                        'facebook_content.engagements',
+                        'Tổng tương tác'
+                    ]
+                ];
+
+            // Tạo các thẻ KPI
+            const cards = definitions.map(([key, label]) => {
+                const metric = data.metrics?.[key];
+                const value = metric?.summary?.value;
+
+                const available =
+                    metric?.status === 'available'
+                    && typeof value === 'number'
+                    && Number.isFinite(value);
+
+                const display = available
+                    ? num(value)
+                      + (
+                          metric.unit === 'currency' && metric.currency
+                              ? ' ' + esc(metric.currency)
+                              : ''
+                        )
+                    : '—';
+
+                const coverage = metric?.summary;
+
+                return `
+                    <div class="details meta-kpi-card">
+                        <strong>${esc(label)}</strong>
+
+                        <h2>${display}</h2>
+
+                        <p class="form-note">
+                            ${
+                                available
+                                    ? 'Có dữ liệu lưu, chưa xác minh'
+                                    : esc(metric?.status || 'Chưa có dữ liệu')
+                            }
+                        </p>
+
+                        <small>
+                            Số ngày có dữ liệu:
+                            ${esc(coverage?.coverage_days ?? 0)}
+                            /
+                            ${esc(coverage?.expected_days ?? 0)}
+                        </small>
+                    </div>
+                `;
+            }).join('');
+
+            // Chuẩn bị dữ liệu cho biểu đồ
+            const chartKey = isAds
+                ? 'facebook_ads.spend'
+                : 'facebook_content.posts_published';
+
+            const graphMetric = data.metrics?.[chartKey];
+
+            const points = (
+                graphMetric?.status === 'available'
+                && Array.isArray(graphMetric.series)
+            )
+                ? graphMetric.series
+                    .filter(row =>
+                        typeof row.date === 'string'
+                        && typeof row.value === 'number'
+                        && Number.isFinite(row.value)
+                    )
+                    .map(row => ({
+                        date: row.date,
+                        value: row.value
+                    }))
+                : [];
+
+        
+    // Chọn loại biểu đồ theo nguồn dữ liệu
+    const graph = points.length
+        ? (
+            isAds
+                // Facebook Ads: Biểu đồ đường
+                ? chart(
+                    points,
+                    'value',
+                    'ga4',
+                    start,
+                    end
+                )
+
+                // Facebook Content: Biểu đồ cột
+                : barChart(
+                    points,
+                    'value',
+                    start,
+                    end
+                )
+        )
+        : '<p class="form-note">Chưa có dữ liệu đủ điều kiện để vẽ biểu đồ.</p>';
+
+
+            // Mở hộp thoại KPI
+            modal(
+                isAds
+                    ? 'KPI Facebook Ads'
+                    : 'KPI Facebook Content',
+
+                notice(
+                    'Dữ liệu Meta chưa được xác minh độc lập. '
+                    + 'Không sử dụng làm bằng chứng báo cáo chính thức.',
+                    'amber'
+                )
+
+                + `<p><strong>Kỳ báo cáo:</strong>
+                    ${esc(start)} → ${esc(end)}
+                   </p>`
+
+                + `<div class="source-summary-list">
+                    ${cards}
+                   </div>`
+
+                + `<h3>Biểu đồ theo ngày</h3>`
+
+                + graph,
+
+                button('Đóng', 'close-modal'),
+
+                true
+            );
+
+            break;
+        }
         case 'connect-facebook': { const r = await api('/meta/connect', 'POST', {}); location.assign(r.url); break; }
         case 'disconnect-meta': modal('Ngắt kết nối Meta', notice('Thu hồi quyền ứng dụng Meta và xóa kết nối đã lưu tại Admin.', 'amber'), button('Giữ kết nối', 'close-modal') + button('Ngắt kết nối', 'disconnect-meta-confirm', 'danger')); break;
         case 'disconnect-meta-confirm': { const r = await api('/meta', 'DELETE'); $('#modal').close(); toast(r.message, !r.revoked_at_provider); await navigate(); break; }

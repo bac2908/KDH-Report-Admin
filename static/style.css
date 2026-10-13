@@ -2353,3 +2353,18 @@ dialog .card {
         transition: none !important
     }
 }
+/* Meta Reporting UI */
+
+.meta-reporting-card {
+    padding: 22px;
+    margin-top: 20px;
+}
+
+.meta-asset-card {
+    padding: 12px;
+    margin: 8px 0;
+}
+
+.meta-kpi-card {
+    padding: 12px;
+}

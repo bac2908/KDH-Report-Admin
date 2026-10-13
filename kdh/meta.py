@@ -16,6 +16,7 @@ from .platform_data import DEFAULT_CLIENT_ID, PlatformData
 
 # Required read permissions for the app's Facebook Login for Business configuration.
 # OAuth validates the grant only; it never discovers assets or fetches reports.
+
 REQUIRED_PERMISSIONS = (
     'pages_show_list',
     'pages_read_engagement',
@@ -24,10 +25,38 @@ REQUIRED_PERMISSIONS = (
 
 
 class Meta:
+
     def __init__(self, store, config, cipher):
         self.store, self.config, self.cipher = store, config, cipher
-        self.client_id = DEFAULT_CLIENT_ID
-        self.secret_name = 'meta:' + self.client_id
+        self.client_id = (
+            config.get("META_CLIENT_ID") or DEFAULT_CLIENT_ID
+        )
+        if self.client_id != DEFAULT_CLIENT_ID:
+            if self.client_id != "client_meta_sandbox":
+                raise RuntimeError(
+                    "Only client_meta_sandbox is supported "
+                    "for Meta testing."
+                )
+            with store.connect(immediate=True) as db:
+                db.execute(
+                    """
+                    INSERT INTO clients (
+                        id, name, slug, timezone,
+                        active, created_at, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, 1, ?, ?)
+                    ON CONFLICT(id) DO NOTHING
+                    """,
+                    (
+                        self.client_id,
+                        "Meta Sandbox - NOT KINDERHEALTH",
+                        "meta-sandbox",
+                        "Asia/Ho_Chi_Minh",
+                        now(),
+                        now(),
+                    ),
+                )
+        self.secret_name = "meta:" + self.client_id
         self.platform = PlatformData(store)
 
     def configured(self):
@@ -199,8 +228,17 @@ class Meta:
             raise Problem('Thời hạn token Meta không hợp lệ. Hãy kết nối lại.', 502) from None
 
     def clear_connections(self, db):
-        db.execute("UPDATE connections SET status='disconnected',secret_name=NULL,updated_at=? WHERE client_id=? AND provider='meta'",
-                   (now(), self.client_id))
+        """Disconnect previous Meta credentials and disable stale selected assets."""
+        db.execute(
+            "UPDATE connections SET status='disconnected', secret_name=NULL, updated_at=? "
+            "WHERE client_id=? AND provider='meta'",
+            (now(), self.client_id),
+        )
+        db.execute(
+            "UPDATE source_assets SET enabled=0, updated_at=? "
+            "WHERE client_id=? AND provider='meta'",
+            (now(), self.client_id),
+        )
 
     def disconnect(self):
         # Serialize with callback/connect across processes, including provider revocation, so a
