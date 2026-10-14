@@ -263,27 +263,15 @@ class MetaReportingHttpTests(unittest.TestCase):
         self.assertIsNone(metric["summary"]["value"])
         n = self.store.one("SELECT COUNT(*) AS n FROM daily_metrics WHERE asset_id=?", (asset_id,))
         self.assertEqual(n["n"], 0)
-    
+
     def test_07_sandbox_marketing_preview(self):
+        """Preview reads stored Meta metrics but never creates a Dataset."""
         from kdh.marketing_preview import build_marketing_preview
 
-        before = self.store.one(
-            "SELECT COUNT(*) AS n FROM datasets"
-        )["n"]
-
+        before = self.store.one("SELECT COUNT(*) AS n FROM datasets")["n"]
         cases = [
-            (
-                "facebook_ads",
-                "act_123",
-                "facebook_ads.spend",
-                121.0,
-            ),
-            (
-                "facebook_content",
-                "1234",
-                "facebook_content.posts_published",
-                1,
-            ),
+            ("facebook_ads", "act_123", "facebook_ads.spend", 121.0),
+            ("facebook_content", "1234", "facebook_content.posts_published", 1),
         ]
 
         for source, external_id, metric_id, expected in cases:
@@ -301,110 +289,68 @@ class MetaReportingHttpTests(unittest.TestCase):
                     end=self.END,
                 )
 
-                self.assertEqual(
-                    preview["client_id"],
-                    "client_meta_sandbox",
-                )
-                self.assertEqual(
-                    preview["sources"],
-                    [source],
-                )
-                self.assertFalse(preview["publishable"])
-                self.assertFalse(
-                    preview["quality"]["independently_verified"]
-                )
+                self.assertEqual(preview["client_id"], "client_meta_sandbox")
+                self.assertEqual(preview["sources"], [source])
+                self.assertIs(preview["publishable"], False)
+                self.assertIs(preview["quality"]["independently_verified"], False)
 
                 values = {
                     item["metric_id"]: item["value"]
                     for item in preview["widgets"]
                 }
-
                 self.assertEqual(values[metric_id], expected)
-
                 if source == "facebook_content":
-                    self.assertIsNone(
-                        values["facebook_content.engagements"]
-                    )
+                    self.assertIsNone(values["facebook_content.engagements"])
 
-        after = self.store.one(
-            "SELECT COUNT(*) AS n FROM datasets"
-        )["n"]
+        after = self.store.one("SELECT COUNT(*) AS n FROM datasets")["n"]
+        self.assertEqual(before, after, "Preview must not create a Dataset")
 
-        # Preview không tạo Dataset trong database.
-        self.assertEqual(before, after)
-    
     def test_08_sandbox_preview_api(self):
-        before = self.store.one(
-            "SELECT COUNT(*) AS n FROM datasets"
-        )["n"]
-
+        """Admin Preview API returns unverified data without mutating datasets."""
+        before = self.store.one("SELECT COUNT(*) AS n FROM datasets")["n"]
         cases = [
-            (
-                "facebook_ads",
-                "act_123",
-                "facebook_ads.spend",
-                121.0
-            ),
-            (
-                "facebook_content",
-                "1234",
-                "facebook_content.posts_published",
-                1
-            )
+            ("facebook_ads", "act_123", "facebook_ads.spend", 121.0),
+            ("facebook_content", "1234", "facebook_content.posts_published", 1),
         ]
 
         for source, external_id, metric_id, expected in cases:
             with self.subTest(source=source):
-                asset_id = self.select_asset(
-                    source, external_id
-                )
-
+                asset_id = self.select_asset(source, external_id)
                 self.sync_asset(asset_id)
 
                 response = self.client.get(
-                    '/api/meta/reporting/preview',
+                    "/api/meta/reporting/preview",
                     query_string={
-                        'asset_id': asset_id,
-                        'start': self.START,
-                        'end': self.END
-                    }
+                        "asset_id": asset_id,
+                        "start": self.START,
+                        "end": self.END,
+                    },
                 )
-
                 self.assertEqual(
                     response.status_code,
                     200,
-                    response.get_data(as_text=True)
+                    response.get_data(as_text=True),
                 )
+                preview = response.get_json()
+                self.assertEqual(preview["client_id"], "client_meta_sandbox")
+                self.assertEqual(preview["sources"], [source])
+                self.assertIs(preview["publishable"], False)
+                self.assertIs(preview["quality"]["independently_verified"], False)
 
-                data = response.get_json()
-
-                self.assertEqual(
-                    data['client_id'],
-                    'client_meta_sandbox'
-                )
-
-                self.assertFalse(data['publishable'])
-
-                self.assertFalse(
-                    data['quality']['independently_verified']
-                )
-
-                widgets = {
-                    item['metric_id']: item
-                    for item in data['widgets']
+                values = {
+                    item["metric_id"]: item["value"]
+                    for item in preview["widgets"]
                 }
+                self.assertEqual(values[metric_id], expected)
+                if source == "facebook_content":
+                    self.assertIsNone(values["facebook_content.engagements"])
 
-                self.assertEqual(
-                    widgets[metric_id]['value'],
-                    expected
-                )
+                body = response.get_data(as_text=True)
+                self.assertNotIn("FAKE_USER_TOKEN", body)
+                self.assertNotIn("FAKE_PAGE_TOKEN", body)
 
-        after = self.store.one(
-            "SELECT COUNT(*) AS n FROM datasets"
-        )["n"]
-
-        # API Preview không tạo Dataset.
-        self.assertEqual(before, after)
+        after = self.store.one("SELECT COUNT(*) AS n FROM datasets")["n"]
+        self.assertEqual(before, after, "Preview API must not create a Dataset")
 
 
 if __name__ == "__main__":

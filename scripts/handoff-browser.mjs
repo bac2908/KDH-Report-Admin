@@ -70,13 +70,44 @@ try {
   await call('Browser.setDownloadBehavior', {behavior:'allow', downloadPath:path.join(output,'downloads')});
   await call('Network.setBlockedURLs', { urls: ['https://*'] });
   await call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
+  const runtimeLoginOnly = process.argv.includes('--runtime-login');
+  const admin = runtimeLoginOnly ? 'http://localhost:8090' : 'http://localhost:8093';
+  const viewer = runtimeLoginOnly ? 'http://localhost:8080' : 'http://localhost:8084';
+  // The report entry must render the existing Admin login, including its styles
+  // and controls, at the same size as the normal Admin root. No runtime sign-in.
+  for (const width of [1440, 390]) {
+    await call('Emulation.setDeviceMetricsOverride', {width, height:1000, deviceScaleFactor:1, mobile:false});
+    await call('Page.navigate', {url:admin+'/'});
+    await until('!!document.querySelector(".login-screen .login-card #auth-form")');
+    const loginSignature = `(() => {const card=document.querySelector('.login-card');const css=getComputedStyle(card);const rect=card.getBoundingClientRect();return {html:card.outerHTML,width:rect.width,height:rect.height,radius:css.borderRadius,background:css.backgroundColor,padding:css.padding};})()`;
+    const originalLogin = await evaluate(loginSignature);
+    assert.notEqual(originalLogin.radius, '0px', 'original Admin login stylesheet loaded');
+    await screenshot((runtimeLoginOnly?'runtime':'fixture')+'-original-admin-login-'+width+'.png');
+    for (const entry of ['/', '/login', '/reports']) {
+      await call('Page.navigate', {url:viewer+entry});
+      await until(`location.origin === ${JSON.stringify(admin)} && !!document.querySelector('.login-screen .login-card #auth-form')`);
+      assert.equal(await evaluate('location.pathname'), '/viewer/reports');
+      assert.deepEqual(await evaluate(loginSignature), originalLogin, 'report entry reuses original Admin login');
+    }
+    await screenshot((runtimeLoginOnly?'runtime':'fixture')+'-restored-admin-login-'+width+'.png');
+    assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth'), 'login fits viewport '+width);
+  }
+  await call('Emulation.setDeviceMetricsOverride', {width:1440, height:1000, deviceScaleFactor:1, mobile:false});
+  if (runtimeLoginOnly) {
+    assert.deepEqual(exceptions, []);
+    assert.ok(!requests.some(r => r.method === 'POST'), 'runtime login smoke must not submit credentials or data');
+    const result = {result:'PASS', original_admin_login:true, new_entries_use_original_login:true, desktop_mobile:true, no_credentials_submitted:true, js_exceptions:0};
+    await fs.writeFile(path.join(output,'restored-login-runtime-result.json'),JSON.stringify(result,null,2));
+    console.log(JSON.stringify(result));
+  } else {
   const state = JSON.parse(await fs.readFile(path.join(output,'e2e-state.json'),'utf8'));
-  const admin = 'http://localhost:8093', viewer = 'http://localhost:8084';
-  await call('Page.navigate',{url:admin+'/'});
-  await until('!!document.querySelector("#auth-form")');
-  await evaluate('document.querySelector("#auth-email").value="review-admin@example.test"; document.querySelector("#auth-password").value="Review-Password-12345"; document.querySelector("#auth-form").requestSubmit()');
-  await until('!!document.querySelector("#content")');
-  await call('Page.navigate',{url:admin+'/marketing'});
+  for (const entry of ['/', '/login', '/reports']) {
+    await call('Page.navigate',{url:viewer+entry});
+    await until(`location.origin === ${JSON.stringify(admin)} && !!document.querySelector('#auth-form')`);
+    assert.equal(await evaluate('location.pathname'), '/viewer/reports');
+  }
+  await screenshot('admin-only-login-at-admin.png');
+  await evaluate('document.querySelector("[name=email]").value="review-admin@example.test"; document.querySelector("[name=password]").value="Review-Password-12345"; document.querySelector("#auth-form").requestSubmit()');
   await until('document.querySelector("#existing-report")?.options.length > 1');
   await evaluate(`document.querySelector('#existing-report').value=${JSON.stringify(state.report_id+':1')};document.querySelector('#existing-report').dispatchEvent(new Event('change'))`);
   await until('!document.querySelector("#selected-report-open").hidden');
@@ -108,9 +139,15 @@ try {
   assert.ok(!requests.slice(filterBefore).some(r=>r.url.includes('/api/')), 'filter/export must not call mock API');
   // The same renderer must change geometry when its saved series changes.
   const changed=await evaluate(`(() => { const e=document.querySelector('[data-bundle-chart]'); const c={title:'fixture',kind:'line',source:'fixture',unit:'count',labels:['2026-09-01','2026-09-02','2026-09-03'],values:[1,null,3]};dashboardCharts.renderBundleChart(e,c);const a=e.querySelector('path').getAttribute('d');dashboardCharts.renderBundleChart(e,{...c,values:[3,1,2]});return a!==e.querySelector('path').getAttribute('d');})()`);assert.ok(changed);
-  // Log out New only; Admin parent remains valid for an internal preview.
+  // A missing Viewer cookie resumes through the live Admin session, without a password.
+  await call('Network.deleteCookies', {name:'kdh_viewer_session',url:viewer});
+  await evaluate('document.documentElement.dataset.navigationProbe="old"');
+  await call('Page.navigate',{url:viewer+'/reports/'+state.report_id+'?revision=1'});
+  await until('document.documentElement.dataset.navigationProbe !== "old" && document.readyState === "complete" && !!document.querySelector("#snapshot-data")');
+  assert.equal(await evaluate('location.href'),viewer+'/reports/'+state.report_id+'?revision=1');
+  // End the viewing session only; Admin remains valid and owns report selection.
   await evaluate(`document.querySelector('form[action="/logout"]').requestSubmit()`);
-  await until('location.pathname==="/login"');
+  await until(`location.origin === ${JSON.stringify(admin)} && !!document.querySelector('#existing-report')`);
   await call('Page.navigate',{url:viewer+'/auth/handoff/start?mode=preview&target_id='+state.candidate_id});
   await until('!!document.querySelector(".snapshot-preview")');await screenshot('e2e-preview.png');
   assert.ok(await evaluate('document.body.innerText.includes("chưa xuất bản")'));
@@ -118,12 +155,25 @@ try {
   await call('Page.navigate',{url:admin+'/'});await until('!!document.querySelector("#content")');
   await evaluate(`(async()=>{const me=await (await fetch('/api/auth/me')).json();const r=await fetch('/api/auth/logout',{method:'POST',headers:{'X-KDH-Request':'1','X-CSRF-Token':me.csrf}});if(!r.ok)throw Error('logout failed');})()`);
   await call('Page.navigate',{url:viewer+'/internal-preview/'+state.candidate_id});
-  await until('location.pathname==="/login"');await screenshot('e2e-revoked-session.png');
-  await call('Page.navigate',{url:viewer+'/auth/handoff/start?mode=published&target_id='+state.report_id+'&revision=1'});
-  await until('!!document.querySelector("#handoff-login")');await screenshot('e2e-expired-admin-login.png');
-  await evaluate('document.querySelector("[name=email]").value="review-admin@example.test"; document.querySelector("[name=password]").value="Review-Password-12345"; document.querySelector("#handoff-login").requestSubmit()');
+  await until(`location.origin === ${JSON.stringify(admin)} && !!document.querySelector('#auth-form')`);await screenshot('e2e-revoked-session.png');
+  await call('Page.navigate',{url:viewer+'/reports/'+state.report_id+'?revision=1'});
+  await until(`location.origin === ${JSON.stringify(admin)} && !!document.querySelector('#auth-form')`);await screenshot('e2e-expired-admin-login.png');
+  await evaluate('document.querySelector("[name=email]").value="review-admin@example.test"; document.querySelector("[name=password]").value="Review-Password-12345"; document.querySelector("#auth-form").requestSubmit()');
   await until('!!document.querySelector("#snapshot-data")');
   assert.equal(await evaluate('location.href'),viewer+'/reports/'+state.report_id+'?revision=1');
+  // Changing the Admin account must not silently replace a live viewing session.
+  await call('Page.navigate',{url:admin+'/'});await until('!!document.querySelector("#content")');
+  await evaluate(`(async()=>{window.qaSecondaryEmail='second-admin-'+Date.now()+'@example.test';const me=await(await fetch('/api/auth/me')).json();const created=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json','X-KDH-Request':'1','X-CSRF-Token':me.csrf},body:JSON.stringify({email:window.qaSecondaryEmail,name:'Second Admin',password:'Second-Admin-12345',role:'admin',allowed:[]})});if(!created.ok)throw Error('fixture user failed');})()`);
+  // Simulate another valid Admin identity without revoking the original parent.
+  await call('Network.deleteCookies', {name:'kdh_session',url:admin});
+  await evaluate(`(async()=>{const logged=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json','X-KDH-Request':'1'},body:JSON.stringify({email:window.qaSecondaryEmail,password:'Second-Admin-12345'})});if(!logged.ok)throw Error('fixture account change failed');})()`);
+  await call('Page.navigate',{url:viewer+'/auth/handoff/start?mode=published&target_id='+state.report_id+'&revision=1'});
+  await until('document.querySelector("#handoff-reset")?.hidden === false');
+  await screenshot('admin-only-identity-conflict.png');
+  await evaluate('document.querySelector("#handoff-reset").requestSubmit()');
+  await until(`location.origin === ${JSON.stringify(admin)} && !!document.querySelector('#existing-report')`);
+  await call('Page.navigate',{url:viewer+'/auth/handoff/start?mode=published&target_id='+state.report_id+'&revision=1'});
+  await until('!!document.querySelector("#snapshot-data")');
   await call('Page.navigate',{url:viewer+'/reports/'+state.report_id+'?revision=1&section=youtube'});
   await until('document.body.innerText.includes("Section")');
   await screenshot('e2e-forbidden-section.png');
@@ -131,7 +181,10 @@ try {
     const status=await evaluate(`fetch(${JSON.stringify(path)}).then(r=>r.status)`); assert.equal(status,404,'production blocks '+path);
   }
   assert.deepEqual(exceptions,[]);
-  const summary={result:'PASS',report_id:state.report_id,revision:1,desktop_tablet_mobile:true,no_second_login:true,revocation:true,expired_login_resumes:true,preview:true,chart_geometry_changes:true,filter_export_no_mock:true,forbidden_section:true,production_mock_routes_blocked:true,js_exceptions:0};
-  await fs.writeFile(path.join(output,'e2e-result.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify(summary));
+  assert.ok(requests.filter(r=>r.method==='POST' && r.url.includes('/api/auth/login')).every(r=>new URL(r.url).origin===admin));
+  assert.ok(!requests.some(r=>r.method==='POST' && r.url===viewer+'/login'));
+  const summary={result:'PASS',report_id:state.report_id,revision:1,original_admin_login:true,desktop_tablet_mobile:true,no_second_login:true,new_has_no_login:true,entry_redirects_to_admin:true,viewer_expiry_resumes:true,revocation:true,expired_login_resumes:true,identity_conflict_recovery:true,preview:true,chart_geometry_changes:true,filter_export_no_mock:true,forbidden_section:true,production_mock_routes_blocked:true,js_exceptions:0};
+  await fs.writeFile(path.join(output,'admin-only-result.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify(summary));
+  }
   await call('Browser.close');
 } finally { socket?.close(); chrome.kill(); clearInterval(keepalive); }

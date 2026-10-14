@@ -48,8 +48,11 @@ class MarketingEndToEnd(unittest.TestCase):
             sock.bind(('127.0.0.1', 0))
             port = sock.getsockname()[1]
         self.base = f'http://127.0.0.1:{port}'
+        self.admin_base = f'http://127.0.0.1:{self.server.server_port}'
+        self.admin.app.config.update(APP_URL=self.admin_base, REPORT_NEW_BASE_URL=self.base)
         env = {**os.environ, 'APP_ENV': 'production', 'DEBUG': 'false',
-               'REPORT_ADMIN_BASE_URL': f'http://127.0.0.1:{self.server.server_port}',
+               'REPORT_ADMIN_BASE_URL': self.admin_base, 'REPORT_ADMIN_PUBLIC_URL': self.admin_base,
+               'REPORT_NEW_PUBLIC_URL': self.base,
                'REPORT_SERVICE_TOKEN': 'test-viewer-service-only', 'REPORT_PREVIEW_ENABLED': 'false'}
         log = open(ROOT / 'test-results' / 'marketing-e2e-new-server.txt', 'w', encoding='utf-8')
         self.addCleanup(log.close)
@@ -82,22 +85,42 @@ class MarketingEndToEnd(unittest.TestCase):
     def stop_admin(self):
         self.server.shutdown(); self.server.server_close(); self.thread.join(timeout=5)
 
-    def request(self, path, data=None):
-        headers = {'Origin': self.base} if data is not None else {}
+    def request(self, path, data=None, *, admin=False, json_body=None):
+        base = self.admin_base if admin else self.base
+        headers = {'Origin': base} if data is not None or json_body is not None else {}
         payload = urllib.parse.urlencode(data).encode() if data is not None else None
         if payload is not None:
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        if json_body is not None:
+            payload = json.dumps(json_body).encode()
+            headers.update({'Content-Type': 'application/json', 'X-KDH-Request': '1'})
         try:
-            response = self.http.open(urllib.request.Request(self.base + path, data=payload, headers=headers), timeout=10)
+            response = self.http.open(urllib.request.Request(base + path, data=payload, headers=headers), timeout=10)
         except urllib.error.HTTPError as error:
             response = error
         with response:
             return response.code, response.read().decode(), {key.lower(): value for key, value in response.headers.items()}
 
-    def login(self, email, password):
-        self.assertEqual(self.request('/login')[0], 200)
-        csrf = next(cookie.value for cookie in self.jar if cookie.name == 'kdh_viewer_csrf')
-        self.assertEqual(self.request('/login', {'csrf': csrf, 'email': email, 'password': password})[0], 303)
+    def login_admin(self, email, password):
+        self.assertEqual(self.request('/login')[2]['location'], self.admin_base + '/viewer/reports')
+        self.assertEqual(self.request('/api/auth/login', admin=True,
+            json_body={'email': email, 'password': password})[0], 200)
+
+    def handoff(self, target, mode='published'):
+        scope = {'mode': mode, 'target_id': target}
+        if mode == 'published':
+            scope['revision'] = 1
+        status, _, headers = self.request('/auth/handoff/start?' + urllib.parse.urlencode(scope))
+        self.assertEqual(status, 303)
+        authorize = urllib.parse.urlsplit(headers['location'])
+        self.assertTrue(headers['location'].startswith(self.admin_base + '/viewer/authorize?'))
+        status, _, headers = self.request(authorize.path + '?' + authorize.query, admin=True)
+        if status != 303:
+            return status
+        values = {key: items[0] for key, items in urllib.parse.parse_qs(
+            urllib.parse.urlsplit(headers['location']).fragment).items()}
+        self.assertEqual(self.request('/auth/handoff/callback')[0], 200)
+        return self.request('/auth/handoff/callback', json_body=values)[0]
 
     def test_provider_snapshot_review_publish_and_customer_render_over_http(self):
         # The real adapter normalizes an independently defined test transport.
@@ -123,10 +146,11 @@ class MarketingEndToEnd(unittest.TestCase):
         self.fx.release_id = released.json['dataset_id']
         report = self.fx.bundle()
         self.fx.grant(report)
-        self.login('viewer@example.test', 'Viewer-test-password-123')
+        self.login_admin('viewer@example.test', 'Viewer-test-password-123')
         path = '/reports/' + report + '?revision=1'
-        self.assertEqual(self.request(path)[0], 404)  # Draft remains private even with a grant.
+        self.assertEqual(self.handoff(report), 404)  # Draft remains private even with a grant.
         self.assertEqual(self.fx.publish(report, 'final').status_code, 200)
+        self.assertEqual(self.handoff(report), 200)
         status, html, headers = self.request(path)
         self.assertEqual(status, 200, html[:500])
         self.assertIn('gsc.clicks', html)
@@ -143,7 +167,8 @@ class MarketingEndToEnd(unittest.TestCase):
         self.fx.grant(report, active=False)
         self.assertEqual(self.request(path)[0], 404)
         self.jar.clear()
-        self.login('review-admin@example.test', 'Review-Password-12345')
+        self.login_admin('review-admin@example.test', 'Review-Password-12345')
+        self.assertEqual(self.handoff(candidate, mode='preview'), 200)
         status, html, _ = self.request('/internal-preview/' + candidate)
         self.assertEqual(status, 200)
         self.assertIn('CHƯA XUẤT BẢN', html)

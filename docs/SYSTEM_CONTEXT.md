@@ -1,6 +1,24 @@
 # KDH Report — bối cảnh toàn hệ thống
 
-## Tiếp nối 13/10/2026 — Admin → New và dashboard Bundle
+## Luồng hiện hành 14/10/2026 — chỉ đăng nhập tại Admin
+
+Đăng nhập Admin → chọn report/revision → Mở báo cáo → dashboard New.
+New đã bỏ form/API đăng nhập và danh sách riêng. Root và bookmark login/list cũ
+chuyển về Admin `/viewer/reports`; phiên xem hết hạn dùng handoff để quay lại đúng
+báo cáo. Auth, ACL, CSRF, Publishing Guard và preview riêng vẫn được giữ.
+Các điểm vào đều dùng lại trang đăng nhập Admin gốc. Đã bỏ form handoff không có
+giao diện; không thay `loginView`, template index, CSS hoặc dashboard đã thiết kế.
+Chi tiết và kết quả đợt này trong `ADMIN_NEW_HANDOFF.md` và tài liệu liên repo.
+
+Đã cập nhật container local Admin 8090/New 8080 ngày 14/10, cả hai healthy.
+338 Admin Python / 225 New pytest / 69 UI / 1 HTTP E2E đều PASS, không skip;
+Chrome fixture PASS. HTTP runtime và hash code trong container đạt, dữ liệu/volume/
+`.env`/khóa mã hóa giữ nguyên, backup PostgreSQL đã đọc kiểm tra đầy đủ. Lượt sửa
+giao diện đã rebuild riêng Admin; Chrome headless kiểm trực tiếp trang đăng nhập
+runtime ở desktop/mobile đạt. Luồng click có đăng nhập được kiểm bằng DB fixture,
+không dùng phiên người dùng hoặc sửa báo cáo/quyền trên DB thật.
+
+## Mốc lịch sử 13/10/2026 — Admin → New và dashboard Bundle
 
 Đã bổ sung handoff một lần có state/PKCE và phiên Viewer theo report/revision,
 migration 8; New gắn Bundle vào sáu template dashboard hiện có. Xem

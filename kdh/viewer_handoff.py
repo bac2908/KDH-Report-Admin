@@ -50,6 +50,15 @@ def register_handoff_routes(app, store, body):
         audience = public_origin(app.config['REPORT_NEW_BASE_URL'])
         return public_origin(app.config['APP_URL']), audience, audience + '/auth/handoff/callback'
 
+    @app.get('/viewer/reports')
+    def report_selection():
+        admin = public_origin(app.config['APP_URL'])
+        if request.host_url.rstrip('/') != admin:
+            return redirect(admin + '/viewer/reports', 303)
+        if not g.user:
+            return render_template('index.html')
+        return redirect('/marketing', 303)
+
     @app.post('/api/internal/v1/handoffs')
     def create_handoff():
         service_identity(app)
@@ -90,7 +99,7 @@ def register_handoff_routes(app, store, body):
             if not row or row['redeemed'] or row['code_hash'] or row['audience'] != audience or row['callback'] != callback:
                 raise Problem('Giao dịch đã hết hạn hoặc đã dùng. Mở lại báo cáo từ Admin.', 400)
             if not g.user:
-                return render_template('handoff_login.html', transaction=transaction)
+                return render_template('index.html')
             user = {**g.user, 'session_id': g.session_id}
             authorize_scope(store, db, user, row)
             code = secrets.token_urlsafe(48)
@@ -133,7 +142,7 @@ def register_handoff_routes(app, store, body):
                         raise
                 else:
                     if existing['id'] != source['id']:
-                        raise Problem('New đang đăng nhập bằng tài khoản khác. Đăng xuất New rồi mở lại từ Admin.', 409, 'identity_conflict')
+                        raise Problem('Phiên xem thuộc tài khoản khác. Kết thúc phiên xem rồi mở lại từ Admin.', 409, 'identity_conflict')
                     if existing.get('delegated_id'):
                         db.execute('DELETE FROM delegated_viewer_sessions WHERE id=?', (existing['delegated_id'],))
             changed = db.execute('UPDATE viewer_handoffs SET redeemed=1 WHERE id=? AND redeemed=0', (row['id'],))

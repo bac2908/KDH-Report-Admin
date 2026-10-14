@@ -63,7 +63,24 @@ async function discoverReferencedDatasets(read, version) {
     return { datasets: loaded.filter(Boolean), loadErrors };
 }
 
-async function start() { try { const session = await api('/auth/me'); state.user = session.user; setCsrf(session.csrf); if (!state.user) { $('#app').innerHTML = loginView(session.setup_required); return; } state.overview = await api('/overview'); state.draft ??= { report_type: state.overview.types.find(t => t.can_generate)?.id || 'seo', ...period('last28'), demo: !!state.overview.demo_enabled, compare: !!state.overview.demo_enabled, exclude_products: false, upload_id: '', previous_upload_id: '' }; await navigate(); } catch (err) { $('#app').innerHTML = `<main class="initial-loading">${empty('Không thể mở ứng dụng', err.message, button('Thử lại', 'restart', 'primary'))}</main>`; } }
+async function start() {
+    try {
+        const session = await api('/auth/me');
+        state.user = session.user;
+        setCsrf(session.csrf);
+        if (!state.user) { $('#app').innerHTML = loginView(session.setup_required); return; }
+        // Reuse the normal Admin login on both report entry routes. The server
+        // validates the pending transaction again after sign-in; no arbitrary
+        // next URL or report scope is accepted by the login form.
+        if (location.pathname === '/viewer/reports') { location.replace('/marketing'); return; }
+        if (location.pathname === '/viewer/authorize') { location.reload(); return; }
+        state.overview = await api('/overview');
+        state.draft ??= { report_type: state.overview.types.find(t => t.can_generate)?.id || 'seo', ...period('last28'), demo: !!state.overview.demo_enabled, compare: !!state.overview.demo_enabled, exclude_products: false, upload_id: '', previous_upload_id: '' };
+        await navigate();
+    } catch (err) {
+        $('#app').innerHTML = `<main class="initial-loading">${empty('Không thể mở ứng dụng', err.message, button('Thử lại', 'restart', 'primary'))}</main>`;
+    }
+}
 async function navigate() {
     if (!state.user) return; const version = ++state.generation; const parts = location.hash.slice(1).split('?'); const route = parts[0].split('/'); const oauthResult = new URLSearchParams(parts[1]).get('oauth'); state.page = pages[route[0]] ? route[0] : 'overview'; state.connectionPlatform = state.page === 'connections' && connectionPlatforms[route[1]] ? route[1] : state.page === 'connections' && oauthResult ? 'google' : null; const page = state.page; $('#app').innerHTML = shell(state.user, state.overview, page, state.connectionPlatform); $('#content').innerHTML = '<div class="empty"><span class="spinner"></span><p>Đang tải dữ liệu…</p></div>'; try {
         const read = async path => { const result = await api(path); if (version !== state.generation) throw new Error('Đã chuyển màn hình hoặc phiên đăng nhập.'); return result; };

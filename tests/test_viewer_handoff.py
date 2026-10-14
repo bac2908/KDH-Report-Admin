@@ -113,10 +113,29 @@ class HandoffCases:
         self.transaction(); browser = self.app.test_client()
         result = browser.get('/viewer/authorize?transaction=' + self.tx)
         self.assertEqual(result.status_code, 200)
-        self.assertIn('data-transaction="' + self.tx, result.text)
+        self.assertEqual(result.text, browser.get('/').text)
+        self.assertIn('/static/admin-shell.css', result.text)
+        self.assertIn('/static/app.js', result.text)
+        self.assertNotIn('handoff-login', result.text)
         browser.post('/api/auth/login', json={'email': self.app.config['INITIAL_ADMIN_EMAIL'], 'password': self.app.config['INITIAL_ADMIN_PASSWORD']}, headers={'X-KDH-Request': '1'})
         self.code(browser)
         self.assertEqual(self.redeem().json['target_id'], self.report_id)
+
+    def test_report_selection_and_login_are_owned_by_admin(self):
+        browser = self.app.test_client()
+        response = browser.get('/viewer/reports?next=https://evil.example.test')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, browser.get('/').text)
+        self.assertIn('/static/admin-shell.css', response.text)
+        self.assertIn('/static/app.js', response.text)
+        self.assertNotIn('handoff-login', response.text)
+        self.assertNotIn('evil.example.test', response.text)
+        browser.post('/api/auth/login', json={'email': self.app.config['INITIAL_ADMIN_EMAIL'],
+            'password': self.app.config['INITIAL_ADMIN_PASSWORD']}, headers={'X-KDH-Request': '1'})
+        self.assertEqual(browser.get('/viewer/reports').location, '/marketing')
+        response = browser.get('/viewer/reports?next=https://evil.example.test', base_url='http://127.0.0.1')
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.location, 'http://localhost/viewer/reports')
 
     def test_identity_conflict_preserves_existing_session(self):
         self.transaction(); self.code()
